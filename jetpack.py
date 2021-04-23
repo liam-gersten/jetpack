@@ -34,7 +34,7 @@ class Scotty():  # class for player
 
     def drawFire(self, app, canvas):
         if self.up:
-            startCoords = [self.x-14, self.y+(self.sizeY/2)]
+            startCoords = [self.x-12, self.y+(self.sizeY/2)]
             key = (int((time.time()-app.upInitial)*10))/10
             if key > 1.5: key = 1.5
             image = ImageTk.PhotoImage(self.igniteImages[key])
@@ -50,10 +50,10 @@ class Coin():  # spinning coin object
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= distance: return True
         return False
 
-    def draw(self, canvas, debug, sequence, size):
+    def draw(self, app, canvas, debug, sequence, size):
         coinId = int((time.time()*10)%7)  # ranges 0 - 6
         canvas.create_image(self.x, self.y,
-                    image=ImageTk.PhotoImage(sequence[coinId]))
+                            image=app.getCachedPhotoImage(sequence[coinId]))
         if debug: canvas.create_rectangle(self.x-(size/2), self.y-(size/2),
                 self.x+(size/2), self.y+(size/2), fill='')
 
@@ -200,7 +200,7 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 class MyApp(App):
     def appStarted(self):
         tp0ReadMe()
-        [self.timerDelay, self.coinSize, self.coinSpacing] = [10, 16, 4]
+        [self.timerDelay, self.coinSize, self.coinSpacing] = [5, 16, 4]
         [self.rows, self.cols] = [20, 40]
         self._mvcCheck = False
         self.cellSize = self.width/self.cols
@@ -232,7 +232,7 @@ class MyApp(App):
         self.loadSprites()
         self.player = Scotty(self.width, self.height, self.scottyImages,
                              self.igniteImages)
-        [self.points, self.movement, self.speed] = [0, 10, 8]
+        [self.points, self.movement, self.speed] = [0, 10, 5]
         [self.coins, self.clouds, self.beams] = [[], [], []]
         [self.debug, self.paused] = [False, False]
         self.currentChunk = Chunk(self, False, 0)
@@ -252,6 +252,11 @@ class MyApp(App):
                 self.points += 1
             else: newCoins += [coin]
         self.coins = newCoins
+
+    def getCachedPhotoImage(self, image):
+        if ('cachedPhotoImage' not in image.__dict__):
+            image.cachedPhotoImage = ImageTk.PhotoImage(image)
+        return image.cachedPhotoImage
 
     def moveAll(self):
         if self.newChunk.x <= 0:
@@ -310,8 +315,8 @@ class MyApp(App):
             drawBorders(self.newChunk.x, self, canvas, 'blue')
         self.player.draw(self, canvas, self.debug)
         self.player.drawFire(self, canvas)
-        for coin in self.coins:
-            coin.draw(canvas, self.debug, self.coinSequence, self.coinSize)
+        for coin in self.coins: coin.draw(self, canvas, self.debug,
+                                          self.coinSequence, self.coinSize)
         for beam in self.beams:
             self.drawBeam(beam, canvas)
             self.drawEnds(beam, canvas)
