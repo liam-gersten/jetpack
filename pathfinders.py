@@ -3,11 +3,7 @@ import random
 from cmu_112_graphics import *
 
 def getMovesByQuadrant(row, col, drow, dcol):
-    if row <= 9:
-        if row <= 1: return [[1, 1], [0, 1], [-1, 1]]
-        return [[0, 1], [1, 1], [-1, 1]]
-    if row >= 19: return [[-1, 1], [0, 1], [1, 1]]
-    return [[0, 1], [0, 1], [1, 1]]
+    pass
 
 # Version One
 
@@ -23,22 +19,6 @@ def versionTwoHelper():
     pass
 
 def versionTwo(chunk):
-    pass
-
-# Version Three
-
-def versionThreehelper():
-    pass
-
-def versionThree(chunk):
-    pass
-
-# Version Four
-
-def versionFourHelper():
-    pass
-
-def versionFour(chunk):
     pass
 
 # Tests
@@ -96,12 +76,6 @@ def testAlgorithms(trials):
         # timeInitial = time.time()+0
         # versionTwo(chunk)
         # v2.append(time.time()-timeInitial)
-        # timeInitial = time.time()+0
-        # versionThree(chunk)
-        # v3.append(time.time()-timeInitial)
-        # timeInitial = time.time()+0
-        # versionFour(chunk)
-        # v4.append(time.time()-timeInitial)
 
 # testAlgorithms(50)
 

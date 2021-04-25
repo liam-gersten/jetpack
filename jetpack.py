@@ -1,5 +1,5 @@
 from cmu_112_graphics import *
-from debugger import *
+import debugger
 from PIL import Image
 import math, time, random, copy
 
@@ -30,7 +30,7 @@ class Scotty():  # class for player
         else: key = int((time.time()*7*(app.speed/5))%3)  # ignite 1-15
         image = ImageTk.PhotoImage(self.images[key])
         canvas.create_image(self.x, self.y, image=image)
-        if debug: outlineScotty(self, canvas)
+        if debug: debugger.outlineScotty(self, canvas)
 
     def drawFire(self, app, canvas):
         if self.up:
@@ -42,18 +42,16 @@ class Scotty():  # class for player
             canvas.create_image(startCoords[0], y, image=image)
 
 class BackDrop():
-    def __init__(self, app, index):
-        self.x = app.width + (app.dropImages[0].size[0] / 2)
-        if index: self.x = app.width+(app.dropImages[0].size[0]/2)+\
-                           (app.dropImages[0].size[0]*index)
-        self.y = app.height-(app.dropImages[0].size[1]/2)
+    def __init__(self, app, index, x):
+        self.x = x
+        if index: self.x = (app.dropSize[0]/2)+(app.dropSize[0]*index)
+        self.y = app.height-(app.dropSize[1]/2)
         self.key = random.choice([0, 1])
 
-    def move(self, app): self.x -= app.speed/(app.dropMultiplier)
+    def move(self, app): self.x -= app.speed//(app.dropMultiplier)
 
-    def draw(self, app, canvas):
-        canvas.create_image(self.x, self.y, image=app.getCachedPhotoImage(
-            app.dropImages[self.key]))
+    def draw(self, app, canvas): canvas.create_image(self.x, self.y,
+            image=app.getCachedPhotoImage(app.dropImages[self.key]))
 
 class Coin():  # spinning coin object
     def __init__(self, app, row, col, chunkX):
@@ -213,14 +211,14 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 
 class MyApp(App):
     def appStarted(self):
-        tp0ReadMe()
-        [self.timerDelay, self.coinSize, self.coinSpacing] = [5, 16, 4]
-        [self.dropMultiplier, self.cloudMultiplier] = [1, 4]
+        debugger.tp0ReadMe()
+        [self.timerDelay, self.coinSize, self.coinSpacing] = [1, 16, 4]
+        [self.dropMultiplier, self.cloudMultiplier] = [1.25, 4]
+        [self.dDrops, self.dCoins] = [True, True]
+        [self._mvcCheck, self.invincible] = [False, False]
         [self.rows, self.cols] = [20, 40]
-        self._mvcCheck = False
         self.cellSize = self.width/self.cols
         self.cloudNumer = 3
-        self.invincible = False
         self.restartApp()
 
     def loadSprites(self):
@@ -240,14 +238,16 @@ class MyApp(App):
                              1: self.loadImage('sprites/scotty1.png'),
                              2: self.loadImage('sprites/scotty2.png'),
                              -1: self.loadImage('sprites/airborne.png')}
-        dropImage = self.loadImage('sprites/cohon0.png')
-        self.scaleImage(dropImage, 10)
+        dropImage = self.loadImage('sprites/cohon0.tiff')
+        dropImage = self.scaleImage(dropImage, 2)
+        self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
-                           1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
+            1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
         for i in range(16): self.igniteImages[i/10] = \
                 self.loadImage('sprites/ignite'+str(i)+'.png')
 
     def restartApp(self):
+        self.drawCount = 0
         self.loadSprites()
         self.player = Scotty(self.width, self.height, self.scottyImages,
                              self.igniteImages)
@@ -259,8 +259,8 @@ class MyApp(App):
         self.downInitial = time.time()-1
         self.upInitial = time.time()-1
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
-        for i in range(self.width//self.dropImages[0].size[0]):
-            self.drops += [BackDrop(self, i)]
+        for i in range((self.width//self.dropSize[0])+2):
+            self.drops += [BackDrop(self, i, False)]
 
     def beamInteracts(self, beam, x, y, distance):
         pass  # numpy will help here but is not required
@@ -279,31 +279,35 @@ class MyApp(App):
             image.cachedPhotoImage = ImageTk.PhotoImage(image)
         return image.cachedPhotoImage
 
-    def moveAll(self):  # reduce duplicate code
+    def manageAll(self):
+        [newCoins, newBeams] = [[], []]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
                                       self.newChunk.x)
             self.newChunk = Chunk(self, False, self.width)
-        self.newChunk.x -= self.speed
-        self.currentChunk.x -= self.speed
-        [newCoins, newBeams, newDrops] = [[], [], []]
-        for cloud in self.clouds: cloud.move(self)
-        for drop in self.drops:
-            drop.move(self)
-            if drop.x+(self.dropImages[0].size[0]/2) > 0: newDrops += [drop]
         for coin in self.coins:
-            coin.x -= self.speed
             if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
             self.beamInteracts(beam, self.player.x, self.player.y,
                     min([self.player.sizeX, self.player.sizeY]))
+            if (beam.x1 > 0) or (beam.x2 > 0): newBeams += [beam]
+        if self.drops[0].x+(self.dropSize[0]/2) < 0:
+            self.drops = self.drops[1:]
+            recentX = self.drops[-1].x+self.dropSize[0]
+            self.drops += [BackDrop(self, False, recentX)]
+        [self.coins, self.beams] = [newCoins, newBeams]
+        self.checkCoinInteraction()
+
+    def moveAll(self):
+        self.newChunk.x -= self.speed
+        self.currentChunk.x -= self.speed
+        for cloud in self.clouds: cloud.move(self)
+        for drop in self.drops: drop.move(self)
+        for coin in self.coins: coin.x -= self.speed
+        for beam in self.beams:
             beam.x1 -= self.speed
             beam.x2 -= self.speed
-            if (beam.x1 > 0) or (beam.x2 > 0): newBeams += [beam]
-        if len(self.drops)-len(newDrops) == 1:
-            newDrops += [BackDrop(self, False)]
-        [self.coins, self.beams, self.drops] = [newCoins, newBeams, newDrops]
-        self.checkCoinInteraction()
+        self.manageAll()
 
     def timerFired(self):
         if not self.paused: self.moveAll()
@@ -331,14 +335,16 @@ class MyApp(App):
         elif event.key.lower() == 'down': self.speed -= 1
         elif event.key.lower() == 'p': self.paused = not self.paused
         elif event.key.lower() == 'i': self.invincible = not self.invincible
-        elif event.key.lower() == 'c': printer(self)
+        elif event.key.lower() == 'c': debugger.printer(self)
+        elif event.key == '1': self.dDrops = not self.dDrops
 
     def redrawAll(self, canvas):
         self.drawSky(canvas)
         if self.debug:
-            drawBorders(self.currentChunk.x, self, canvas, 'red')
-            drawBorders(self.newChunk.x, self, canvas, 'blue')
-        for drop in self.drops: drop.draw(self, canvas)
+            debugger.drawBorders(self.currentChunk.x, self, canvas, 'red')
+            debugger.drawBorders(self.newChunk.x, self, canvas, 'blue')
+        if self.dDrops:
+            for drop in self.drops: drop.draw(self, canvas)
         self.player.draw(self, canvas, self.debug)
         self.player.drawFire(self, canvas)
         for coin in self.coins: coin.draw(self, canvas, self.debug,
