@@ -56,7 +56,8 @@ def beamGenerator(app, chunk, upperBeamRange, x):
             for beamChunk in tempBeams:
                 sizes = [len(beamChunk.literal), len(beamChunk.literal[0]),
                             beamChunk.row, beamChunk.col]
-                type = random.choice([2, 3])
+                if sizes[0] == sizes[1]: type = 4
+                else: type = random.choice([1, 2, 3])
                 if type == 1: object = jetpack.staticBeam(app, sizes[0],
                                         sizes[1], sizes[2], sizes[3], x)
                 elif type == 2: object = jetpack.verticleBeam(app, sizes[0],

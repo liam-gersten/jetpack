@@ -158,10 +158,31 @@ class horizontalBeam():
 
 class rotatingBeam():  # rotate left or right at constant speed
     def __init__(self, app, rows, cols, row, col, chunkX):
+        self.width = app.cellSize
+        self.centerY = ((row+(rows/2))*app.cellSize)
+        self.yScale = self.width*(rows-1)/2
+        self.centerX = chunkX+((col+(cols/2))*app.cellSize)
+        self.xScale = self.width*(cols-1)/2
+
+    def move(self, app): self.centerX -= app.speed
+
+    def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
+
+    def interacts(self, app, player):
         pass
 
-    def move(self, app):
-        pass
+    def draw(self, app, canvas):
+        timeStamp = 2*((time.time()-app.timeInitial)%1)
+        angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
+        if almostEqual(angle, 2*math.pi): angle = 0
+        [dy, dx] = [self.yScale*math.sin(angle), self.yScale*math.cos(angle)]
+        [x1, y1, x2, y2] = [self.centerX-dx, self.centerY-dy,
+                            self.centerX+dx, self.centerY+dy]
+        canvas.create_line(x1, y1, x2, y2, fill='green', width=10)
+        canvas.create_oval(x1-(self.width/3), y1-(self.width/3),
+                           x1+(self.width/3), y1+(self.width/3), fill='red')
+        canvas.create_oval(x2-(self.width/3), y2-(self.width/3),
+                           x2+(self.width/3), y2+(self.width/3), fill='red')
 
 class missile():
     def __init__(self, app, x, y):
