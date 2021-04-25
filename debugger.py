@@ -16,11 +16,6 @@ def printer(app):
         print('\n**newChunk**')
         print(app.newChunk.x)
         for row in app.newChunk.literal: print(row)
-    if app.beams != []:
-        print('\n**beams**')
-        for beam in app.beams:
-            print('\n')
-            print(beam.x1, beam.y1, beam.x2, beam.y2)
 
 def outlineScotty(object, canvas):
     canvas.create_rectangle(object.x-(object.sizeX/2), object.y-

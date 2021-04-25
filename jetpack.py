@@ -1,5 +1,6 @@
 from cmu_112_graphics import *
 import debugger
+import chunkGeneration
 from PIL import Image
 import math, time, random, copy
 
@@ -85,22 +86,81 @@ class staticBeam():  # does not move
             self.x2 = ((col+second[1])*app.cellSize)+chunkX+(app.cellSize/2)
             self.y2 = ((row+second[0])*app.cellSize)+(app.cellSize/2)
 
-    def updateCoords(self, app):
+    def move(self, app):
         self.x1 -= app.speed
         self.x2 -= app.speed
 
-class verticleBeam():  # move up and down with sin waves
-    def __init__(self, app, rows, cols, row, col, chunkX):
+    def outOfBounds(self): return (self.x1+(self.width/3) < 0) and \
+                                  (self.x2+(self.width/3) < 0)
+
+    def interacts(self, app, player):
         pass
 
-    def updateCoords(self, app):
+    def draw(self, app, canvas):
+        canvas.create_line(self.x1, self.y1, self.x2, self.y2,
+                           fill='green', width=10)
+        canvas.create_oval(self.x1-(self.width/3), self.y1-(self.width/3),
+                self.x1+(self.width/3), self.y1+(self.width/3), fill='red')
+        canvas.create_oval(self.x2-(self.width/3), self.y2-(self.width/3),
+                self.x2+(self.width/3), self.y2+(self.width/3), fill='red')
+
+class verticleBeam():  # initialize both to reduce duplicate code
+    def __init__(self, app, rows, cols, row, col, chunkX):
+        self.width = app.cellSize
+        self.centerY = ((row+(rows/2))*app.cellSize)
+        self.yScale = self.width*(rows-1)/2
+        self.centerX = chunkX+((col+(cols/2))*app.cellSize)
+        self.xScale = self.width*(cols-1)/2
+
+    def move(self, app): self.centerX -= app.speed
+
+    def outOfBounds(self): return self.centerX+self.xScale+self.width < 0
+
+    def interacts(self, app, player):
         pass
+
+    def draw(self, app, canvas):
+        [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
+        yPosition = self.yScale*math.cos(2*math.pi*((time.time()-
+                                            app.timeInitial)%1))
+        y = self.centerY+yPosition
+        canvas.create_line(x1, y, x2, y, fill='green', width=10)
+        canvas.create_oval(x1-(self.width/3), y-(self.width/3),
+                           x1+(self.width/3), y+(self.width/3), fill='red')
+        canvas.create_oval(x2-(self.width/3), y-(self.width/3),
+                           x2+(self.width/3), y+(self.width/3), fill='red')
+
+class horizontalBeam():
+    def __init__(self, app, rows, cols, row, col, chunkX):
+        self.width = app.cellSize
+        self.centerY = ((row+(rows/2))*app.cellSize)
+        self.yScale = self.width*(rows-1)/2
+        self.centerX = chunkX+((col+(cols/2))*app.cellSize)
+        self.xScale = self.width*(cols-1)/2
+
+    def move(self, app): self.centerX -= app.speed
+
+    def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
+
+    def interacts(self, app, player):
+        pass
+
+    def draw(self, app, canvas):
+        [y1, y2] = [self.centerY-self.yScale, self.centerY+self.yScale]
+        xPosition = self.xScale*math.cos(2*math.pi*((time.time()-
+                                            app.timeInitial)%1))
+        x = self.centerX+xPosition
+        canvas.create_line(x, y1, x, y2, fill='green', width=10)
+        canvas.create_oval(x-(self.width/3), y1-(self.width/3),
+                           x+(self.width/3), y1+(self.width/3), fill='red')
+        canvas.create_oval(x-(self.width/3), y2-(self.width/3),
+                           x+(self.width/3), y2+(self.width/3), fill='red')
 
 class rotatingBeam():  # rotate left or right at constant speed
     def __init__(self, app, rows, cols, row, col, chunkX):
         pass
 
-    def updateCoords(self, app):
+    def move(self, app):
         pass
 
 class missile():
@@ -159,62 +219,14 @@ class Chunk():  # 2D list includes locations of coins/obstacles
         # newChunk becomes oldChunk
         if oldChunk: [self.literal, self.x] = [copy.deepcopy(oldChunk), x]
         else:  # brand new chunk create from scratch
-            [self.literal, self.x] = [[], x]
-            # preliminary generation without pathfinder or complexity
-            for row in range(app.rows):
-                currentRow = []
-                for col in range(app.cols): currentRow += ['']
-                self.literal += [currentRow]
-            for i in range(random.randint(1, 2)):
-                coinChunk = self.generateChunk(app, [[2, 3], [2, 3]], [])
-                if not coinChunk: break
-                self.modifyBoard(app, coinChunk, app.coins, 'c')
-            for i in range(1):
-                beamChunk = self.generateChunk(app, [[1, 4], [1, 4]], [])
-                if not beamChunk: break
-                self.modifyBoard(app, beamChunk, [], [])
-                app.beams += [staticBeam(app, len(beamChunk[0]),
-                    len(beamChunk[0][0]), beamChunk[1], beamChunk[2], self.x)]
-
-    def modifyBoard(self, app, chunk, storeList, version):  # destructive
-        for row in range(len(chunk[0])):
-            for col in range(len(chunk[0][0])):
-                if version == 'c':
-                    object = Coin(app, row+chunk[1], col+chunk[2], self.x)
-                if version == []: object = []
-                self.literal[row+chunk[1]][col+chunk[2]] = version
-                storeList += [object]
-
-    def checkAvalibility(self, app, coinList, startRow, startCol):
-        for row in range(len(coinList)):
-            for col in range(len(coinList[row])):
-                if (row+startRow >= app.rows) or (col+startCol >= app.cols) or \
-                        (self.literal[row+startRow][col+startCol] != ''):
-                    return False
-        return True
-
-    def generateChunk(self, app, ranges, chunk):  # makes mini chunk
-        loopNumber = 0
-        while True:
-            if loopNumber > 50: return False  # for efficiency
-            [rows, cols] = [random.randrange(ranges[1][0], ranges[1][1]),
-                            random.randrange(ranges[0][0], ranges[0][1])]
-            for row in range(rows):
-                currentRow = []
-                for col in range(cols): currentRow += [1]
-                chunk.append(currentRow)
-            [row, col] = [random.randint(0, app.rows-1),
-                          random.randint(0, app.cols-1)]
-            if self.checkAvalibility(app, chunk, row, col): break
-            loopNumber += 1
-        return [chunk, row, col]
+            self.literal = chunkGeneration.generationManager(app, x)
+            self.x = x
 
 class MyApp(App):
     def appStarted(self):
-        debugger.tp0ReadMe()
         [self.timerDelay, self.coinSize, self.coinSpacing] = [1, 16, 4]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 4]
-        [self.dDrops, self.dCoins] = [True, True]
+        [self.dDrops, self.dCoins] = [False, True]
         [self._mvcCheck, self.invincible] = [False, False]
         [self.rows, self.cols] = [20, 40]
         self.cellSize = self.width/self.cols
@@ -247,23 +259,21 @@ class MyApp(App):
                 self.loadImage('sprites/ignite'+str(i)+'.png')
 
     def restartApp(self):
-        self.drawCount = 0
+        self.difficulty = 'medium'
         self.loadSprites()
         self.player = Scotty(self.width, self.height, self.scottyImages,
                              self.igniteImages)
-        [self.points, self.movement, self.speed] = [0, 10, 5]
+        [self.points, self.movement, self.speed] = [0, 10, 2]
         [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
         [self.debug, self.paused] = [False, False]
-        self.currentChunk = Chunk(self, False, 0)
-        self.newChunk = Chunk(self, False, self.width)
+        self.timeInitial = time.time()+1
         self.downInitial = time.time()-1
         self.upInitial = time.time()-1
+        self.currentChunk = Chunk(self, False, 0)
+        self.newChunk = Chunk(self, False, self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
         for i in range((self.width//self.dropSize[0])+2):
             self.drops += [BackDrop(self, i, False)]
-
-    def beamInteracts(self, beam, x, y, distance):
-        pass  # numpy will help here but is not required
 
     def checkCoinInteraction(self):  # numpy will help here but is not required
         coinSpace = min([self.player.sizeX, self.player.sizeY])+self.coinSize/3
@@ -288,9 +298,7 @@ class MyApp(App):
         for coin in self.coins:
             if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
-            self.beamInteracts(beam, self.player.x, self.player.y,
-                    min([self.player.sizeX, self.player.sizeY]))
-            if (beam.x1 > 0) or (beam.x2 > 0): newBeams += [beam]
+            if not beam.outOfBounds(): newBeams += [beam]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]
@@ -304,9 +312,7 @@ class MyApp(App):
         for cloud in self.clouds: cloud.move(self)
         for drop in self.drops: drop.move(self)
         for coin in self.coins: coin.x -= self.speed
-        for beam in self.beams:
-            beam.x1 -= self.speed
-            beam.x2 -= self.speed
+        for beam in self.beams: beam.move(self)
         self.manageAll()
 
     def timerFired(self):
@@ -340,31 +346,21 @@ class MyApp(App):
 
     def redrawAll(self, canvas):
         self.drawSky(canvas)
+        if self.dDrops:
+            for drop in self.drops: drop.draw(self, canvas)
         if self.debug:
             debugger.drawBorders(self.currentChunk.x, self, canvas, 'red')
             debugger.drawBorders(self.newChunk.x, self, canvas, 'blue')
-        if self.dDrops:
-            for drop in self.drops: drop.draw(self, canvas)
         self.player.draw(self, canvas, self.debug)
         self.player.drawFire(self, canvas)
         for coin in self.coins: coin.draw(self, canvas, self.debug,
                                           self.coinSequence, self.coinSize)
-        for beam in self.beams:
-            self.drawBeam(beam, canvas)
-            self.drawEnds(beam, canvas)
+        for beam in self.beams: beam.draw(self, canvas)
 
-    # to be replaced by images
-    def drawBeam(self, beam, canvas): canvas.create_line(beam.x1, beam.y1,
-                    beam.x2, beam.y2, fill='green', width=10)
-
-    def drawEnds(self, beam, canvas):  # to be replaced by images
-        canvas.create_oval(beam.x1-(beam.width/3), beam.y1-(beam.width/3),
-                    beam.x1+(beam.width/3), beam.y1+(beam.width/3), fill='red')
-        canvas.create_oval(beam.x2-(beam.width/3), beam.y2-(beam.width/3),
-                    beam.x2+(beam.width/3), beam.y2+(beam.width/3), fill='red')
 
     def drawSky(self, canvas):  # add art for CMU campus (Cohen UC)
         canvas.create_rectangle(0, 0, self.width, self.height, fill='#34c0eb')
         for cloud in self.clouds: cloud.draw(canvas)
 
-MyApp(width=800, height=400)
+if __name__ == '__main__':
+    MyApp(width=800, height=400)

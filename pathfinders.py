@@ -31,45 +31,10 @@ def checkAvalibility(miniChunk, startRow, startCol, chunk):
                 return False
     return True
 
-def generateBeamChunk(ranges, emptyChunk, mainChunk):
-    loopNumber = 0
-    while True:
-        emptyChunk = []
-        if loopNumber > 50: return False
-        [rows, cols] = [random.randrange(ranges[1][0], ranges[1][1]),
-                        random.randrange(ranges[0][0], ranges[0][1])]
-        for row in range(rows):
-            currentRow = []
-            for col in range(cols): currentRow += [[1]]
-            emptyChunk.append(currentRow)
-        [row, col] = [random.randint(0, 20-1),
-                      random.randint(5, 40-1)]
-        if checkAvalibility(emptyChunk, row, col, mainChunk): break
-        loopNumber += 1
-    return [emptyChunk, row, col]
-
-def modifyBoard(miniChunk, storeList, version, mainChunk):
-    for row in range(len(miniChunk[0])):
-        for col in range(len(miniChunk[0][0])):
-            if version == []: object = [1]
-            mainChunk[row+miniChunk[1]][col+miniChunk[2]] = object
-
-def generateChunk():
-    chunk = []
-    for r in range(20):
-        row = []
-        for col in range(40): row += [0]
-        chunk.append(row)
-    for b in range(random.choice([2, 3, 4, 5])):
-        beamChunk = generateBeamChunk([[1, 6], [1, 6]], [], chunk)
-        if not beamChunk: break
-        modifyBoard(beamChunk, [], [], chunk)
-    return chunk
-
 def testAlgorithms(trials):
     [v1, v2, v3, v4] = [[], [], [], []]
     for trial in range(trials):
-        chunk = generateChunk()
+        chunk = None
         timeInitial = time.time()+0
         # versionOne(chunk, 10, 0, 0, 1, True)
         v1.append(time.time()-timeInitial)
@@ -85,7 +50,7 @@ def appStarted(app):
     restartApp(app)
 
 def restartApp(app):
-    app.chunk = generateChunk()
+    app.chunk = None
     # versionOne(app.chunk, 10, 0, 0, 1, True)
 
 def keyPressed(app, event):
