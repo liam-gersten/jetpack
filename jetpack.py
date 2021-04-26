@@ -4,11 +4,6 @@ import chunkGeneration
 from PIL import Image
 import math, time, random, copy
 
-# Known Bugs:
-# - Clouds sometimes move backwards or have vastly different speeds
-# - negative speed moves everything backwards
-# - restartApp does not properly destroy variables (namespace pollution?)
-
 def almostEqual(d1, d2, epsilon=10**-7): return (abs(d2-d1) < epsilon)
 
 def minDistance(pa, pb, px):

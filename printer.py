@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt  # used only for testing purposes
+
 def drawBorders(x, app, canvas, color):  # displays chunk cells and borders
     for row in range(app.rows):
         for col in range(app.cols):
@@ -16,6 +18,11 @@ def printer(app):  # prints new and current chunks
         print('\n**newChunk**')
         print(app.newChunk.x)
         for row in app.newChunk.literal: print(row)
+
+def histogram(list1, list2, color):
+    n, bins, patches = plt.hist(list1, len(list1), facecolor=color)
+    if list2: n, bins, patches = plt.hist(list2, len(list2), facecolor='red')
+    plt.show()
 
 def outlineScotty(object, canvas):  # displays the hitbox for scotty
     canvas.create_rectangle(object.x-(object.sizeX/2), object.y-

@@ -1,7 +1,6 @@
-import bareGenerator
 import chunkGeneration
+import printer
 import time, random, math
-import matplotlib.pyplot as plt
 from cmu_112_graphics import *
 
 # gets auto sequence of searches to make for one of 4 quadrants
@@ -64,35 +63,27 @@ def memorizeHP(searcher): # cache helper for nonGuidedHalfPoint
 def nonGuidedHalfPoint(app, chunk, row, col):
     pass
 
-def testCaller(version, app, chunk):
-    if version == 1: return pathFinder1(app, chunk)
-    return pathFinder1(app, chunk)
-
 def displayResults(outerV1, outerV2, v1Pairs, v2Pairs):
-    n, bins, patches = plt.hist(outerV1, len(outerV1), facecolor='blue')
-    n, bins, patches = plt.hist(outerV2, len(outerV2), facecolor='blue')
-    plt.show()
+    printer.histogram(outerV1, outerV2, 'blue')
     for listColor in [[v1Pairs, 'blue'], [v2Pairs, 'red']]:
         [x, y] = [[], []]
         for pair in listColor[0]:
             x.append(pair[0])
             y.append(pair[1])
-        plt.scatter(x, y, c=listColor[1])
-    plt.show()
+        printer.plt.scatter(x, y, c=listColor[1])
+    printer.plt.show()
 
 def testAlgorithms(trials, variations, rows, cols, app):
     [outerV1, outerV2] = [[], []]
     [v1Pairs, v2Pairs] = [[], []]
     for version in range(1, 3):
         for i in range(variations):
-            print(i)
-            for upperBeamRange in range(2, 30):
+            for upperBeamRange in range(2, 12):
                 [v1, v2] = [[], []]
                 for trial in range(trials):
                     chunk = bareGenerator.generator(rows, cols, upperBeamRange)
                     timeInitial = time.time()+0
-                    value = pathFinder1(app,
-                                chunkGeneration.conversionWrapper(app, chunk))
+                    value = chunkGeneration.conversionWrapper(app, chunk)
                     timeCompleted = time.time()-timeInitial
                     if version == 1:
                         v1.append(timeCompleted)
@@ -103,11 +94,15 @@ def testAlgorithms(trials, variations, rows, cols, app):
                 if version == 1:
                     v1Pairs.append([upperBeamRange, sum(v1)/len(v1)])
                 else: v2Pairs.append([upperBeamRange, sum(v2)/len(v2)])
+    printer.histogram(outerV1, False, 'blue')
+    printer.histogram(outerV1, False, 'red')
     displayResults(outerV1, outerV2, v1Pairs, v2Pairs)
 
 if __name__ == '__main__':
+    try: import bareGenerator  # tests require bareGenerator test file
+    except: pass
     trials = 50
-    variations = 3
+    variations = 2
     [rows, cols] = [20, 40]
     app = bareGenerator.DummyApp(rows, cols)
     testAlgorithms(trials, variations, rows, cols, app)

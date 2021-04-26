@@ -1,5 +1,9 @@
-import pathfinders
-import random, time, copy
+import random, copy
+
+########
+# This file is partially duplicated code from chunkGeneration.py for testing
+# purposes only. It should not count towards TP1
+########
 
 class DummyApp():
     def __init__(self, rows, cols):
