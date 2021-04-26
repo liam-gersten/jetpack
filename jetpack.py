@@ -4,7 +4,23 @@ import chunkGeneration
 from PIL import Image
 import math, time, random, copy
 
+# Known Bugs:
+# - Clouds sometimes move backwards or have vastly different speeds
+# - negative speed moves everything backwards
+# - restartApp does not properly destroy variables (namespace pollution?)
+
 def almostEqual(d1, d2, epsilon=10**-7): return (abs(d2-d1) < epsilon)
+
+def minDistance(pa, pb, px):
+    abVector = [pb[0]-pa[0], pb[1]-pa[1]]
+    beVector = [px[0]-pb[0], px[1]-pb[1]]
+    axVector = [px[0]-pa[0], px[1]-pa[1]]
+    dotABBX = (abVector[0]*beVector[0])+(abVector[1]*beVector[1])
+    dotABAX = (abVector[0]*axVector[0])+(abVector[1]*axVector[1])
+    if (dotABBX > 0): return math.sqrt(((px[0]-pb[0])**2)+((px[1]-pb[1])**2))
+    elif (dotABAX < 0): return math.sqrt(((px[0]-pa[0])**2)+((px[1]-pa[1])**2))
+    else: return abs(((abVector[0])*(axVector[1]))-((abVector[1])*
+                (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 class Scotty():  # class for player
     def __init__(self, width, height, images, igniteImages):
@@ -93,8 +109,8 @@ class staticBeam():  # does not move
     def outOfBounds(self): return (self.x1+(self.width/3) < 0) and \
                                   (self.x2+(self.width/3) < 0)
 
-    def interacts(self, app, player):
-        pass
+    def interacts(self, app, player): return minDistance([self.x1, self.y1],
+                [self.x2, self.y2], [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         canvas.create_line(self.x1, self.y1, self.x2, self.y2,
@@ -117,7 +133,11 @@ class verticleBeam():  # moves vertically
     def outOfBounds(self): return self.centerX+self.xScale+self.width < 0
 
     def interacts(self, app, player):
-        pass
+        yPosition = self.yScale*math.cos(2*math.pi*
+                    ((time.time()-app.timeInitial)%1))
+        pa = [self.centerX-self.xScale, self.centerY+yPosition]
+        pb = [self.centerX+self.xScale, self.centerY+yPosition]
+        return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
@@ -144,7 +164,11 @@ class horizontalBeam():  # moves horizontally
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
     def interacts(self, app, player):
-        pass
+        xPosition = self.xScale*math.cos(2*math.pi*
+                    ((time.time()-app.timeInitial)%1))
+        pa = [self.centerX+xPosition, self.centerY-self.yScale]
+        pb = [self.centerX+xPosition, self.centerY+self.yScale]
+        return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         [y1, y2] = [self.centerY-self.yScale, self.centerY+self.yScale]
@@ -171,7 +195,13 @@ class rotatingBeam():  # rotate left or right
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
     def interacts(self, app, player):
-        pass
+        timeStamp = 2*((time.time()-app.timeInitial)%1)
+        angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
+        [dy, dx] = [self.yScale*math.sin(angle),
+                    self.yScale*math.cos(angle)]
+        return minDistance([(self.centerX-dx), (self.centerY-dy)],
+            [(self.centerX+dx), (self.centerY+dy)], [player.x, player.y]) <= \
+               (player.sizeX/2)
 
     def draw(self, app, canvas):  # animation curve below
         timeStamp = 2*((time.time()-app.timeInitial)%1)
@@ -323,6 +353,7 @@ class MyApp(App):
         for coin in self.coins:
             if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
+            if beam.interacts(self, self.player): exit()
             if not beam.outOfBounds(): newBeams += [beam]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
