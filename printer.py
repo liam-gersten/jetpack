@@ -1,13 +1,13 @@
-def drawBorders(x, app, canvas, color):
+def drawBorders(x, app, canvas, color):  # displays chunk cells and borders
     for row in range(app.rows):
         for col in range(app.cols):
-            x1 = x + (app.cellSize * col)
-            y1 = app.cellSize * row
-            x2 = x1 + app.cellSize
-            y2 = y1 + app.cellSize
+            x1 = x+(app.cellSize*col)
+            y1 = app.cellSize*row
+            x2 = x1+app.cellSize
+            y2 = y1+app.cellSize
             canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
-def printer(app):
+def printer(app):  # prints new and current chunks
     if type(app.currentChunk.literal) is list:
         print('\n**currentChunk**')
         print(app.currentChunk.x)
@@ -17,18 +17,12 @@ def printer(app):
         print(app.newChunk.x)
         for row in app.newChunk.literal: print(row)
 
-def outlineScotty(object, canvas):
+def outlineScotty(object, canvas):  # displays the hitbox for scotty
     canvas.create_rectangle(object.x-(object.sizeX/2), object.y-
         (object.sizeY/2), object.x+(object.sizeX/2), object.y+(object.sizeY/2),
                             fill='')
 
-def tp0ReadMe():
-    print('\n**Tp0 Description**\n')
-    print('Main game stored in jetpack.py (see instructions below)')
-    print('Debugging and write up functions stored in debugger.py')
-    print('As of now, the project requires no module installation')
-    print('Numerous images are stored in the sprites folder')
-    print('All images are original works by me (more are in the works)')
+def tp1ReadMe():  # instructions as of tp1
     print('\n**Instructions**\n')
     print('Hold mouse/touchpad to make Scotty fly')
     print('Use the arrow keys to increase/decrease game speed')

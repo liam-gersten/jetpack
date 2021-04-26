@@ -1,70 +1,113 @@
-import time
-import random
+import bareGenerator
+import chunkGeneration
+import time, random, math
+import matplotlib.pyplot as plt
 from cmu_112_graphics import *
 
-def getMovesByQuadrant(row, col, drow, dcol):
-    pass
+# gets auto sequence of searches to make for one of 4 quadrants
+def getMovesByQuadrant(app, row):
+    if row <= app.rows//2:
+        if row <= app.rows//4: return [[1, 1], [0, 1], [-1, 1]]
+        return [[0, 1], [1, 1], [-1, 1]]
+    if row <= 3*app.rows//4: return [[0, 1], [-1, 1], [1, 1]]
+    return [[-1, 1], [0, 1], [1, 1]]
 
-# Version One
-
-def versionOneHelper():
-    pass
-
-def versionOne(chunk, row, col, drow, dcol, moveNext):
-    pass
-
-# Version Two
-
-def versionTwoHelper():
-    pass
-
-def versionTwo(chunk):
-    pass
-
-# Tests
-
-def checkAvalibility(miniChunk, startRow, startCol, chunk):
-    for row in range(len(miniChunk)):
-        for col in range(len(miniChunk[row])):
-            if (row+startRow >= 20) or (col+startCol >= 40) or \
-                    (chunk[row+startRow][col+startCol] == [1]):
-                return False
+def checkFour(app, chunk, row, col):  # checks space for 2x2 scotty
+    for r in range(2):
+        for c in range(2):
+            if (row+r < 0) or (app.rows <= row+r) or (col+c < 0): return False
+            if col+c >= app.cols-1: return True
+            if not chunk[row+r][col+c]: return False
     return True
 
-def testAlgorithms(trials):
-    [v1, v2, v3, v4] = [[], [], [], []]
-    for trial in range(trials):
-        chunk = None
-        timeInitial = time.time()+0
-        # versionOne(chunk, 10, 0, 0, 1, True)
-        v1.append(time.time()-timeInitial)
-        # timeInitial = time.time()+0
-        # versionTwo(chunk)
-        # v2.append(time.time()-timeInitial)
+def pathFinder1(app, chunk):  # pathfinder1's wrapper
+    for startRow in range(0, app.rows-1, 2):
+        if modifiedDepthFirst(app, chunk, startRow, 0): return True
+    return False
 
-# testAlgorithms(50)
+def memorizeDFS(searcher):  # cache helper for modifiedDepthFirst
+    import functools
+    cachedResults = dict()
+    @functools.wraps(searcher)
+    def wrapper(*args):
+        if str(args) not in cachedResults:
+            cachedResults[str(args)] = searcher(*args)
+        return cachedResults[str(args)]
+    return wrapper
 
-def appStarted(app):
-    [app.rows, app.cols] = [20, 40]
-    app.cellSize = app.width/app.cols
-    restartApp(app)
+@memorizeDFS
+def modifiedDepthFirst(app, chunk, row, col):
+    if not checkFour(app, chunk, row, col): return False
+    if col == app.cols-1: return True  # reached end
+    moves = getMovesByQuadrant(app, row)
+    for sequence in moves:
+        [testRow, testCol] = [row+sequence[0], col+sequence[1]]
+        if modifiedDepthFirst(app, chunk, testRow, testCol): return True
+    return False
 
-def restartApp(app):
-    app.chunk = None
-    # versionOne(app.chunk, 10, 0, 0, 1, True)
+def pathFinder2(app, chunk):  # pathfinder2's wrapper
+    for startRow in range(0, app.rows-1, 2):
+        if nonGuidedHalfPoint(app, chunk, startRow, 0): return True
+    return False
 
-def keyPressed(app, event):
-    if event.key.lower() == 'r': restartApp(app)
+def memorizeHP(searcher): # cache helper for nonGuidedHalfPoint
+    import functools
+    cachedResults = dict()
+    @functools.wraps(searcher)
+    def wrapper(*args):
+        if str(args) not in cachedResults:
+            cachedResults[str(args)] = searcher(*args)
+        return cachedResults[str(args)]
+    return wrapper
 
-def redrawAll(app, canvas):
-    for row in range(app.rows):
-        for col in range(app.cols):
-            if app.chunk[row][col] == [1]: color = 'red'
-            elif app.chunk[row][col] == 1: color = 'blue'
-            else: color = 'white'
-            [x1, y1] = [col * app.cellSize, row * app.cellSize]
-            [x2, y2] = [x1 + app.cellSize, y1 + app.cellSize]
-            canvas.create_rectangle(x1, y1, x2, y2, fill=color, width=5)
+@memorizeHP
+def nonGuidedHalfPoint(app, chunk, row, col):
+    pass
+
+def testCaller(version, app, chunk):
+    if version == 1: return pathFinder1(app, chunk)
+    return pathFinder1(app, chunk)
+
+def displayResults(outerV1, outerV2, v1Pairs, v2Pairs):
+    n, bins, patches = plt.hist(outerV1, len(outerV1), facecolor='blue')
+    n, bins, patches = plt.hist(outerV2, len(outerV2), facecolor='blue')
+    plt.show()
+    for listColor in [[v1Pairs, 'blue'], [v2Pairs, 'red']]:
+        [x, y] = [[], []]
+        for pair in listColor[0]:
+            x.append(pair[0])
+            y.append(pair[1])
+        plt.scatter(x, y, c=listColor[1])
+    plt.show()
+
+def testAlgorithms(trials, variations, rows, cols, app):
+    [outerV1, outerV2] = [[], []]
+    [v1Pairs, v2Pairs] = [[], []]
+    for version in range(1, 3):
+        for i in range(variations):
+            print(i)
+            for upperBeamRange in range(2, 30):
+                [v1, v2] = [[], []]
+                for trial in range(trials):
+                    chunk = bareGenerator.generator(rows, cols, upperBeamRange)
+                    timeInitial = time.time()+0
+                    value = pathFinder1(app,
+                                chunkGeneration.conversionWrapper(app, chunk))
+                    timeCompleted = time.time()-timeInitial
+                    if version == 1:
+                        v1.append(timeCompleted)
+                        outerV1.append(timeCompleted)
+                    else:
+                        v2.append(timeCompleted)
+                        outerV2.append(timeCompleted)
+                if version == 1:
+                    v1Pairs.append([upperBeamRange, sum(v1)/len(v1)])
+                else: v2Pairs.append([upperBeamRange, sum(v2)/len(v2)])
+    displayResults(outerV1, outerV2, v1Pairs, v2Pairs)
 
 if __name__ == '__main__':
-    runApp(width=1000, height=500)
+    trials = 50
+    variations = 3
+    [rows, cols] = [20, 40]
+    app = bareGenerator.DummyApp(rows, cols)
+    testAlgorithms(trials, variations, rows, cols, app)

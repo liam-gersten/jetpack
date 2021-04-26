@@ -1,5 +1,5 @@
 from cmu_112_graphics import *
-import debugger
+import printer
 import chunkGeneration
 from PIL import Image
 import math, time, random, copy
@@ -31,18 +31,18 @@ class Scotty():  # class for player
         else: key = int((time.time()*7*(app.speed/5))%3)  # ignite 1-15
         image = ImageTk.PhotoImage(self.images[key])
         canvas.create_image(self.x, self.y, image=image)
-        if debug: debugger.outlineScotty(self, canvas)
+        if debug: printer.outlineScotty(self, canvas)
 
     def drawFire(self, app, canvas):
-        if self.up:
+        if self.up:  # rising
             startCoords = [self.x-12, self.y+(self.sizeY/2)]
             key = (int((time.time()-app.upInitial)*10))/10
-            if key > 1.5: key = 1.5
+            if key > 1.5: key = 1.5  # stops
             image = ImageTk.PhotoImage(self.igniteImages[key])
             y = startCoords[1]+((self.igniteImages[key].size[1])/2)
             canvas.create_image(startCoords[0], y, image=image)
 
-class BackDrop():
+class BackDrop():  # single sprite of Cohon University Center
     def __init__(self, app, index, x):
         self.x = x
         if index: self.x = (app.dropSize[0]/2)+(app.dropSize[0]*index)
@@ -59,7 +59,7 @@ class Coin():  # spinning coin object
         self.x = chunkX+(app.cellSize*col)+((app.coinSize+app.coinSpacing)/2)
         self.y = (app.cellSize*row)+((app.coinSize+app.coinSpacing)/2)
 
-    def interacts(self, x, y, distance):  # can be more efficient
+    def interacts(self, x, y, distance):  # player touches
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= distance: return True
         return False
 
@@ -104,7 +104,7 @@ class staticBeam():  # does not move
         canvas.create_oval(self.x2-(self.width/3), self.y2-(self.width/3),
                 self.x2+(self.width/3), self.y2+(self.width/3), fill='red')
 
-class verticleBeam():  # initialize both to reduce duplicate code
+class verticleBeam():  # moves vertically
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
         self.centerY = ((row+(rows/2))*app.cellSize)
@@ -121,6 +121,7 @@ class verticleBeam():  # initialize both to reduce duplicate code
 
     def draw(self, app, canvas):
         [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
+        # animation curve
         yPosition = self.yScale*math.cos(2*math.pi*((time.time()-
                                             app.timeInitial)%1))
         y = self.centerY+yPosition
@@ -130,7 +131,7 @@ class verticleBeam():  # initialize both to reduce duplicate code
         canvas.create_oval(x2-(self.width/3), y-(self.width/3),
                            x2+(self.width/3), y+(self.width/3), fill='red')
 
-class horizontalBeam():
+class horizontalBeam():  # moves horizontally
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
         self.centerY = ((row+(rows/2))*app.cellSize)
@@ -147,6 +148,7 @@ class horizontalBeam():
 
     def draw(self, app, canvas):
         [y1, y2] = [self.centerY-self.yScale, self.centerY+self.yScale]
+        # animation curve
         xPosition = self.xScale*math.cos(2*math.pi*((time.time()-
                                             app.timeInitial)%1))
         x = self.centerX+xPosition
@@ -156,7 +158,7 @@ class horizontalBeam():
         canvas.create_oval(x-(self.width/3), y2-(self.width/3),
                            x+(self.width/3), y2+(self.width/3), fill='red')
 
-class rotatingBeam():  # rotate left or right at constant speed
+class rotatingBeam():  # rotate left or right
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
         self.centerY = ((row+(rows/2))*app.cellSize)
@@ -171,7 +173,7 @@ class rotatingBeam():  # rotate left or right at constant speed
     def interacts(self, app, player):
         pass
 
-    def draw(self, app, canvas):
+    def draw(self, app, canvas):  # animation curve below
         timeStamp = 2*((time.time()-app.timeInitial)%1)
         angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
         if almostEqual(angle, 2*math.pi): angle = 0
@@ -244,17 +246,18 @@ class Chunk():  # 2D list includes locations of coins/obstacles
             self.x = x
 
 class MyApp(App):
-    def appStarted(self):
+    def appStarted(self):  # permanent values below
         [self.timerDelay, self.coinSize, self.coinSpacing] = [1, 16, 4]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 4]
         [self.dDrops, self.dCoins] = [False, True]
-        [self._mvcCheck, self.invincible] = [False, False]
+        [self._mvcCheck, self.invincible] = [True, False]
         [self.rows, self.cols] = [20, 40]
+        self.pathfinderStall = 0.5
         self.cellSize = self.width/self.cols
         self.cloudNumer = 3
         self.restartApp()
 
-    def loadSprites(self):
+    def loadSprites(self):  # called only once
         self.coinCoordsRange = [
             (self.width//(self.coinSize+self.coinSpacing)),
             (self.height//(self.coinSize+self.coinSpacing))]
@@ -280,6 +283,7 @@ class MyApp(App):
                 self.loadImage('sprites/ignite'+str(i)+'.png')
 
     def restartApp(self):
+        printer.tp1ReadMe()
         self.difficulty = 'medium'
         self.loadSprites()
         self.player = Scotty(self.width, self.height, self.scottyImages,
@@ -296,7 +300,7 @@ class MyApp(App):
         for i in range((self.width//self.dropSize[0])+2):
             self.drops += [BackDrop(self, i, False)]
 
-    def checkCoinInteraction(self):  # numpy will help here but is not required
+    def checkCoinInteraction(self):  # calls .interacts methods for coins
         coinSpace = min([self.player.sizeX, self.player.sizeY])+self.coinSize/3
         newCoins = []
         for coin in self.coins:
@@ -310,7 +314,7 @@ class MyApp(App):
             image.cachedPhotoImage = ImageTk.PhotoImage(image)
         return image.cachedPhotoImage
 
-    def manageAll(self):
+    def manageAll(self):  # deletes and adds objects based on locations
         [newCoins, newBeams] = [[], []]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
@@ -327,7 +331,7 @@ class MyApp(App):
         [self.coins, self.beams] = [newCoins, newBeams]
         self.checkCoinInteraction()
 
-    def moveAll(self):
+    def moveAll(self):  # moves all objects at various speeds
         self.newChunk.x -= self.speed
         self.currentChunk.x -= self.speed
         for cloud in self.clouds: cloud.move(self)
@@ -338,20 +342,19 @@ class MyApp(App):
 
     def timerFired(self):
         if not self.paused: self.moveAll()
-        # equation for Scotty velocity (make more efficient)
-        if self.player.up: self.player.move(
+        if self.player.up: self.player.move( # equation for Scotty velocity
             (-4*(time.time()-self.upInitial+1)**(1/2)), self.height)
         elif not self.paused: self.player.move((10*math.log(time.time()-
                             self.downInitial+1)), self.height)
 
     def mousePressed(self, event):
-        if not self.player.up:
+        if not self.player.up:  # falling
             [self.player.airborne, self.player.up] = [True, True]
             [self.player.sizeX, self.player.sizeY] = [35, 46]
             self.upInitial = time.time()+0
 
     def mouseReleased(self, event):
-        if self.player.up:
+        if self.player.up:  # rising
             self.player.up = False
             self.downInitial = time.time()+0
 
@@ -362,24 +365,23 @@ class MyApp(App):
         elif event.key.lower() == 'down': self.speed -= 1
         elif event.key.lower() == 'p': self.paused = not self.paused
         elif event.key.lower() == 'i': self.invincible = not self.invincible
-        elif event.key.lower() == 'c': debugger.printer(self)
-        elif event.key == '1': self.dDrops = not self.dDrops
+        elif event.key.lower() == 'c': printer.printer(self)
+        elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
 
     def redrawAll(self, canvas):
         self.drawSky(canvas)
         if self.dDrops:
             for drop in self.drops: drop.draw(self, canvas)
         if self.debug:
-            debugger.drawBorders(self.currentChunk.x, self, canvas, 'red')
-            debugger.drawBorders(self.newChunk.x, self, canvas, 'blue')
+            printer.drawBorders(self.currentChunk.x, self, canvas, 'red')
+            printer.drawBorders(self.newChunk.x, self, canvas, 'blue')
         self.player.draw(self, canvas, self.debug)
         self.player.drawFire(self, canvas)
         for coin in self.coins: coin.draw(self, canvas, self.debug,
                                           self.coinSequence, self.coinSize)
         for beam in self.beams: beam.draw(self, canvas)
 
-
-    def drawSky(self, canvas):  # add art for CMU campus (Cohen UC)
+    def drawSky(self, canvas):
         canvas.create_rectangle(0, 0, self.width, self.height, fill='#34c0eb')
         for cloud in self.clouds: cloud.draw(canvas)
 
