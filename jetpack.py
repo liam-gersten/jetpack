@@ -18,23 +18,23 @@ def minDistance(pa, pb, px):
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 class Scotty():  # class for player
-    def __init__(self, width, height, images, igniteImages):
-        self.x = width/4
-        self.y = height-100
-        [self.sizeX, self.sizeY] = [35, 46]
+    def __init__(self, app, images, igniteImages):
+        self.x = app.width/4
+        self.y = app.height-(100*app.scale)
+        [self.sizeX, self.sizeY] = [35*app.scale, 46*app.scale]
         [self.up, self.airborne] = [False, True]
         self.images = images
         self.igniteImages = igniteImages
 
-    def move(self, changeY, height):
-        if self.sizeY/2 < self.y+changeY < (height-(self.sizeY/2)):
+    def move(self, app, changeY):
+        if app.barY+self.sizeY/2 < self.y+changeY < (app.height-(self.sizeY/2)):
             self.y += changeY  # within bounds of game
-        elif self.y+changeY >= height-(self.sizeY/2):
+        elif self.y+changeY >= app.height-(self.sizeY/2):
             self.airborne = False  # now running on the ground
-            self.y = height-(self.sizeY/2)-5
-            [self.sizeX, self.sizeY] = [52, 36]  # size of grounded sprites
-        if self.y+(self.sizeY/2) > height:
-            self.y = height-(self.sizeY/2)
+            self.y = app.height-(self.sizeY/2)-(5*app.scale)
+            [self.sizeX, self.sizeY] = [52*app.scale, 36*app.scale]
+        if self.y+(self.sizeY/2) > app.height:
+            self.y = app.height-(self.sizeY/2)  # try -(5*app.scale)
 
     def draw(self, app, canvas, debug):
         if self.airborne: key = -1
@@ -46,7 +46,7 @@ class Scotty():  # class for player
 
     def drawFire(self, app, canvas):
         if self.up:  # rising
-            startCoords = [self.x-12, self.y+(self.sizeY/2)]
+            startCoords = [self.x-(12*app.scale), self.y+(self.sizeY/2)]
             key = (int((time.time()-app.upInitial)*10))/10
             if key > 1.5: key = 1.5  # stops
             image = ImageTk.PhotoImage(self.igniteImages[key])
@@ -68,7 +68,7 @@ class BackDrop():  # single sprite of Cohon University Center
 class Coin():  # spinning coin object
     def __init__(self, app, row, col, chunkX):
         self.x = chunkX+(app.cellSize*col)+((app.coinSize+app.coinSpacing)/2)
-        self.y = (app.cellSize*row)+((app.coinSize+app.coinSpacing)/2)
+        self.y = app.barY+(app.cellSize*row)+((app.coinSize+app.coinSpacing)/2)
 
     def interacts(self, x, y, distance):  # player touches
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= distance: return True
@@ -86,16 +86,16 @@ class staticBeam():  # does not move
         self.width = app.cellSize
         if (rows == 1) or (cols == 1):
             self.x1 = (col*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y1 = (row*app.cellSize)+(app.cellSize/2)
+            self.y1 = (row*app.cellSize)+(app.cellSize/2)+app.barY
             self.x2 = ((col+cols-1)*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y2 = ((row+rows-1)*app.cellSize)+(app.cellSize/2)
+            self.y2 = ((row+rows-1)*app.cellSize)+(app.cellSize/2)+app.barY
         else:
             [first, second] = random.choice([[[rows-1, 0], [0, cols-1]],
                                              [[0, 0], [rows-1, cols-1]]])
             self.x1 = ((col+first[1])*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y1 = ((row+first[0])*app.cellSize)+(app.cellSize/2)
+            self.y1 = ((row+first[0])*app.cellSize)+(app.cellSize/2)+app.barY
             self.x2 = ((col+second[1])*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y2 = ((row+second[0])*app.cellSize)+(app.cellSize/2)
+            self.y2 = ((row+second[0])*app.cellSize)+(app.cellSize/2)+app.barY
 
     def move(self, app):
         self.x1 -= app.speed
@@ -118,7 +118,7 @@ class staticBeam():  # does not move
 class verticleBeam():  # moves vertically
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
-        self.centerY = ((row+(rows/2))*app.cellSize)
+        self.centerY = app.barY+((row+(rows/2))*app.cellSize)
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
@@ -149,7 +149,7 @@ class verticleBeam():  # moves vertically
 class horizontalBeam():  # moves horizontally
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
-        self.centerY = ((row+(rows/2))*app.cellSize)
+        self.centerY = app.barY+((row+(rows/2))*app.cellSize)
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
@@ -180,7 +180,7 @@ class horizontalBeam():  # moves horizontally
 class rotatingBeam():  # rotate left or right
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
-        self.centerY = ((row+(rows/2))*app.cellSize)
+        self.centerY = app.barY+((row+(rows/2))*app.cellSize)
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
@@ -237,20 +237,21 @@ class dragon():
 class Cloud():  # background objects that do not influence gameplay
     def __init__(self, app, id):
         self.id = id
-        [self.sizeX, self.sizeY] = [26, 11]
+        [self.sizeX, self.sizeY] = [26*app.scale, 11*app.scale]
         self.speedRange = [1, 1.5]
         self.sizeRange = [1, 2]
-        self.coordsRange = app.height//3
+        self.coordsRange = app.barY+(app.trueHeight//3)
         self.reDefine(app, random.randint(0, app.width))
 
     def reDefine(self, app, x):  # recreates new cloud at right end of screen
         self.sprite = app.loadImage('sprites/cloud0.png')
         if self.id % 2 == 0:
             self.sprite = self.sprite.transpose(Image.FLIP_LEFT_RIGHT)
-        self.size = random.choice(self.sizeRange)
-        self.speed = random.choice(self.speedRange)
+        self.size = app.scale*random.choice(self.sizeRange)
+        self.speed = app.scale*random.choice(self.speedRange)
         self.x = x
-        self.y = random.randint(int(self.sizeY*self.size), self.coordsRange)
+        self.y = random.randint(app.barY+int(self.sizeY*self.size),
+                                self.coordsRange)
         self.sprite = app.scaleImage(self.sprite, self.size)
 
     def move(self, app):
@@ -272,50 +273,69 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 
 class MyApp(App):
     def appStarted(self):  # permanent values below
-        [self.timerDelay, self.coinSize, self.coinSpacing] = [1, 16, 4]
+        self.barPortion = 9
+        self.standardizedWidth = 800
+        self.scale = self.width/self.standardizedWidth
+        self.barY = (self.height//self.barPortion)
+        self.buttonSizes = (2*self.barY)//3
+        self.buttonSpacing = (self.barY-self.buttonSizes)//2
+        if self.width <= 400: self.buttonSizes = self.barY
+        print(self.buttonSizes)
+        self.trueHeight = self.height-self.barY
+        [self.timerDelay, self.coinSize, self.coinSpacing] = \
+            [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 4]
         [self.dDrops, self.dCoins] = [False, True]
-        [self._mvcCheck, self.invincible] = [True, False]
+        [self._mvcCheck, self.invincible] = [True, True]
         [self.rows, self.cols] = [20, 40]
         self.pathfinderStall = 0.5
         self.cellSize = self.width/self.cols
         self.cloudNumer = 3
+        self.longestRun = 0
         self.restartApp()
 
     def loadSprites(self):  # called only once
         self.coinCoordsRange = [
             (self.width//(self.coinSize+self.coinSpacing)),
-            (self.height//(self.coinSize+self.coinSpacing))]
-        [self.coinSequence, self.igniteImages] = [{}, {}]
+            (self.trueHeight//(self.coinSize+self.coinSpacing))]
+        [self.coinSequence, self.igniteImages, self.buttons] = [{}, {}, {}]
         self.igniteSpriteHeights = ()
         for i in range(4):
             image = self.loadImage('sprites/coin'+str(i)+'.png')
-            self.coinSequence[i] = self.scaleImage(image, 1)  # temporary
+            self.coinSequence[i] = self.scaleImage(image, self.scale)
         for i in range(2, -1, -1):
             image = self.loadImage('sprites/coin'+str(i)+'.png')
-            image = self.scaleImage(image, 1)
-            self.coinSequence[6 - i] = image.transpose(Image.FLIP_LEFT_RIGHT)
+            image = self.scaleImage(image, self.scale)
+            self.coinSequence[6-i] = image.transpose(Image.FLIP_LEFT_RIGHT)
         self.scottyImages = {0: self.loadImage('sprites/scotty0.png'),
                              1: self.loadImage('sprites/scotty1.png'),
                              2: self.loadImage('sprites/scotty2.png'),
                              -1: self.loadImage('sprites/airborne.png')}
+        for imageKey in self.scottyImages:
+            self.scottyImages[imageKey] = \
+                self.scaleImage(self.scottyImages[imageKey], self.scale)
         dropImage = self.loadImage('sprites/cohon0.tiff')
-        dropImage = self.scaleImage(dropImage, 2)
+        dropImage = self.scaleImage(dropImage, 2*self.scale)
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
-        for i in range(16): self.igniteImages[i/10] = \
-                self.loadImage('sprites/ignite'+str(i)+'.png')
+        for i in range(16): self.igniteImages[i/10] = self.scaleImage(
+            self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
+        self.buttons['pause'] = self.loadImage('sprites/pause.png')
+        self.buttons['play'] = self.loadImage('sprites/play.png')
+        for button in self.buttons:
+            scale = self.buttonSizes/self.buttons[button].size[0]
+            self.buttons[button] = self.scaleImage(self.buttons[button], scale)
 
     def restartApp(self):
         printer.tp1ReadMe()
         self.difficulty = 'medium'
         self.loadSprites()
-        self.player = Scotty(self.width, self.height, self.scottyImages,
-                             self.igniteImages)
-        [self.points, self.movement, self.speed] = [0, 10, 2]
+        self.player = Scotty(self, self.scottyImages, self.igniteImages)
+        [self.points, self.movement, self.speed] = \
+            [0, 10*self.scale, 2*self.scale]
         [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
-        [self.debug, self.paused] = [False, False]
+        [self.debug, self.paused, self.settingsOpen] = [False, False, False]
         self.timeInitial = time.time()+1
         self.downInitial = time.time()-1
         self.upInitial = time.time()-1
@@ -348,7 +368,8 @@ class MyApp(App):
         for coin in self.coins:
             if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
-            if beam.interacts(self, self.player): exit()
+            if not self.invincible:
+                if beam.interacts(self, self.player): exit()
             if not beam.outOfBounds(): newBeams += [beam]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
@@ -368,15 +389,29 @@ class MyApp(App):
 
     def timerFired(self):
         if not self.paused: self.moveAll()
-        if self.player.up: self.player.move( # equation for Scotty velocity
-            (-4*(time.time()-self.upInitial+1)**(1/2)), self.height)
-        elif not self.paused: self.player.move((10*math.log(time.time()-
-                            self.downInitial+1)), self.height)
+        if self.player.up: self.player.move(self,
+            (-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
+        elif not self.paused: self.player.move(self, (self.scale*
+            10*math.log(time.time()-self.downInitial+1)))
 
     def mousePressed(self, event):
-        if not self.player.up:  # falling
+        if ((self.barY-self.buttonSizes)/2) <= event.y <= self.barY-\
+                ((self.barY-self.buttonSizes)/2):
+            print('in bar')
+            if self.width-self.buttonSpacing-self.buttonSizes <= event.x <= \
+                    self.width-self.buttonSpacing:
+                self.paused = not self.paused
+            if self.width-(2*(self.buttonSpacing+self.buttonSizes)) <= event.x \
+                    <= self.width-(2*self.buttonSpacing)-self.buttonSizes:
+                self.restartApp()
+            if self.width-(3*(self.buttonSpacing+self.buttonSizes)) <= event.x \
+                    <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes):
+                self.settingsOpen = not self.settingsOpen
+                self.paused = not self.paused
+        elif not self.player.up:  # falling
             [self.player.airborne, self.player.up] = [True, True]
-            [self.player.sizeX, self.player.sizeY] = [35, 46]
+            [self.player.sizeX, self.player.sizeY] = [35*self.scale,
+                                                      46*self.scale]
             self.upInitial = time.time()+0
 
     def mouseReleased(self, event):
@@ -406,10 +441,38 @@ class MyApp(App):
         for coin in self.coins: coin.draw(self, canvas, self.debug,
                                           self.coinSequence, self.coinSize)
         for beam in self.beams: beam.draw(self, canvas)
+        self.drawStatusBar(canvas)
+
+    def drawStatusBar(self, canvas):
+        self.drawButtons(canvas)
+
+    def drawUpperCoin(self, canvas):
+        pass
+
+    def drawCurrentRun(self, canvas):
+        pass
+
+    def drawButtons(self, canvas):
+        y = self.barY//2
+        pausedX = self.width-self.buttonSpacing-(self.buttonSizes//2)
+        restartX = self.width-(2*self.buttonSpacing)-((3*self.buttonSizes)//2)
+        settingsX = self.width-(3*self.buttonSpacing)-((5*self.buttonSizes)//2)
+        if self.paused: image = ImageTk.PhotoImage(self.buttons['play'])
+        else: image = ImageTk.PhotoImage(self.buttons['pause'])
+        canvas.create_image(pausedX, y, image=image)
+        canvas.create_rectangle(restartX-(self.buttonSizes/2),
+            y-(self.buttonSizes/2), restartX+(self.buttonSizes/2),
+            y+(self.buttonSizes/2), fill='grey')
+        canvas.create_rectangle(settingsX-(self.buttonSizes/2),
+            y-(self.buttonSizes/2), settingsX+(self.buttonSizes/2),
+            y+(self.buttonSizes/2), fill='red')
+
+
 
     def drawSky(self, canvas):
-        canvas.create_rectangle(0, 0, self.width, self.height, fill='#34c0eb')
+        canvas.create_rectangle(0, self.barY, self.width, self.height,
+                                fill='#34c0eb')
         for cloud in self.clouds: cloud.draw(canvas)
 
 if __name__ == '__main__':
-    MyApp(width=800, height=400)
+    MyApp(width=800, height=450)  # cohon doesn't move below 400 x 250

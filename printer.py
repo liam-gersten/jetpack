@@ -4,9 +4,9 @@ def drawBorders(x, app, canvas, color):  # displays chunk cells and borders
     for row in range(app.rows):
         for col in range(app.cols):
             x1 = x+(app.cellSize*col)
-            y1 = app.cellSize*row
+            y1 = app.barY+app.cellSize*row
             x2 = x1+app.cellSize
-            y2 = y1+app.cellSize
+            y2 = app.barY+y1+app.cellSize
             canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
 def printer(app):  # prints new and current chunks
