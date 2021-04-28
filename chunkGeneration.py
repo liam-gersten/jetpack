@@ -86,9 +86,9 @@ def difficultyWrapper(app, chunk, x):
     difficultyCurves = {'easy': {'a': 5, 'b': 0},  # y = b + ax
             'medium': {'a': 4, 'b': 20}, 'hard': {'a': 6, 'b': 40}}
     curve = difficultyCurves[app.difficulty]
-    difficulty = (curve['a']*((time.time()-app.timeInitial)/60))+curve['b']
-    # upperBeamRange = int(difficulty/20)+1  # second curve
-    upperBeamRange = 6
+    difficulty = app.difficultyBase+(curve['a']*((time.time()-
+                            app.timeInitial)/60))+curve['b']
+    upperBeamRange = int(difficulty/20)+1  # second curve
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
     return coinGenerator(app, chunk, x)
 

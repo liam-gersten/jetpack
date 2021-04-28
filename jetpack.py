@@ -34,7 +34,7 @@ class Scotty():  # class for player
             self.y = app.height-(self.sizeY/2)-(5*app.scale)
             [self.sizeX, self.sizeY] = [52*app.scale, 36*app.scale]
         if self.y+(self.sizeY/2) > app.height:
-            self.y = app.height-(self.sizeY/2)  # try -(5*app.scale)
+            self.y = app.height-(self.sizeY/2)
 
     def draw(self, app, canvas, debug):
         if self.airborne: key = -1
@@ -48,7 +48,7 @@ class Scotty():  # class for player
         if self.up:  # rising
             startCoords = [self.x-(12*app.scale), self.y+(self.sizeY/2)]
             key = (int((time.time()-app.upInitial)*10))/10
-            if key > 1.5: key = 1.5  # stops
+            if key > 1.8: key = random.choice([1.5, 1.6, 1.7, 1.8])
             image = ImageTk.PhotoImage(self.igniteImages[key])
             y = startCoords[1]+((self.igniteImages[key].size[1])/2)
             canvas.create_image(startCoords[0], y, image=image)
@@ -78,7 +78,6 @@ class Coin():  # spinning coin object
             self.standardSize = app.buttonSizes/app.coinSequence[0].size[0]
             self.x = (app.buttonSizes/2)+app.buttonSpacing
             self.y = app.barY/2
-            print(self.x, self.y)
 
     def changeTimeState(self, app):
         if time.time()-app.coinStart >= 1: app.coinStart = False
@@ -105,18 +104,15 @@ class Coin():  # spinning coin object
 class staticBeam():  # does not move
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
-        if (rows == 1) or (cols == 1):
-            self.x1 = (col*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y1 = (row*app.cellSize)+(app.cellSize/2)+app.barY
-            self.x2 = ((col+cols-1)*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y2 = ((row+rows-1)*app.cellSize)+(app.cellSize/2)+app.barY
+        if (rows == 1) or (cols == 1): [minus, first, second] = [1, 0, 0]
         else:
+            minus = 0
             [first, second] = random.choice([[[rows-1, 0], [0, cols-1]],
                                              [[0, 0], [rows-1, cols-1]]])
-            self.x1 = ((col+first[1])*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y1 = ((row+first[0])*app.cellSize)+(app.cellSize/2)+app.barY
-            self.x2 = ((col+second[1])*app.cellSize)+chunkX+(app.cellSize/2)
-            self.y2 = ((row+second[0])*app.cellSize)+(app.cellSize/2)+app.barY
+        self.x1 = ((col+first[1])*app.cellSize)+chunkX+(app.cellSize/2)
+        self.y1 = ((row+first[0])*app.cellSize)+(app.cellSize/2)+app.barY
+        self.x2 = ((col+second[1]-minus)*app.cellSize)+chunkX+(app.cellSize/2)
+        self.y2 = ((row+second[0]-minus)*app.cellSize)+(app.cellSize/2)+app.barY
 
     def move(self, app):
         self.x1 -= app.speed
@@ -159,9 +155,8 @@ class verticleBeam():  # moves vertically
 
     def draw(self, app, canvas):
         [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
-        # animation curve
         if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
-                app.staticTime-app.timeSincePaused)%1))
+                app.staticTime-app.timeSincePaused)%1)) # animation curve
         else: yPosition = self.yScale*math.cos(2*math.pi*((
                 time.time()-app.timeSincePaused)%1))
         y = self.centerY+yPosition
@@ -270,7 +265,7 @@ class Cloud():  # background objects that do not influence gameplay
     def __init__(self, app, id):
         self.id = id
         [self.sizeX, self.sizeY] = [26*app.scale, 11*app.scale]
-        self.speedRange = [1, 1.5]
+        self.speedRange = [1, 1.1]
         self.sizeRange = [1, 2]
         self.coordsRange = app.barY+(app.trueHeight//3)
         self.reDefine(app, random.randint(0, app.width))
@@ -280,7 +275,7 @@ class Cloud():  # background objects that do not influence gameplay
         if self.id % 2 == 0:
             self.sprite = self.sprite.transpose(Image.FLIP_LEFT_RIGHT)
         self.size = app.scale*random.choice(self.sizeRange)
-        self.speed = app.scale*random.choice(self.speedRange)
+        self.speed = app.speed*app.scale*random.choice(self.speedRange)
         self.x = x
         self.y = random.randint(app.barY+int(self.sizeY*self.size),
                                 self.coordsRange)
@@ -288,7 +283,7 @@ class Cloud():  # background objects that do not influence gameplay
 
     def move(self, app):
         if self.x + (self.sizeX*self.size) < 0: self.reDefine(app, app.width)
-        self.x -= self.speed
+        self.x -= self.speed//app.cloudMultiplier
 
     def draw(self, canvas):
         [x1, y1] = [self.x+(self.size*(self.sizeX/2)),
@@ -304,34 +299,40 @@ class Chunk():  # 2D list includes locations of coins/obstacles
             self.x = x
 
 class MyApp(App):
-    def appStarted(self):  # permanent values below
-        self.barPortion = 9
-        self.standardizedWidth = 800
+    def appStarted(self):
+        [self._mvcCheck, self.invincible] = [True, False]
+        [self.rows, self.cols] = [20, 40]
+        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 50, 5]
+        self.pathfinderStall = 0.5
+        [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
+        [self.barPortion, self.standardizedWidth] = [9, 800]
         self.scale = self.width/self.standardizedWidth
         self.barY = (self.height//self.barPortion)
         self.buttonSizes = (2*self.barY)//3
         self.buttonSpacing = (self.barY-self.buttonSizes)//2
         if self.width <= 400: self.buttonSizes = self.barY
         self.trueHeight = self.height-self.barY
+        self.cellSize = self.width/self.cols
+        [self.dDrops, self.dCoins] = [False, True]
         [self.timerDelay, self.coinSize, self.coinSpacing] = \
             [1, 16*self.scale, 4*self.scale]
-        [self.dropMultiplier, self.cloudMultiplier] = [1.25, 4]
-        [self.dDrops, self.dCoins] = [False, True]
-        [self._mvcCheck, self.invincible] = [True, True]
-        [self.rows, self.cols] = [20, 40]
-        self.pathfinderStall = 0.5
-        self.cellSize = self.width/self.cols
-        self.cloudNumer = 3
-        self.longestRun = 0
-        self.currentRun = 0
+        [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
         self.restartApp()
 
+    def loadIndividualSprites(self):
+        self.scottyImages = {-1: self.loadImage('sprites/airborne.png')}
+        [self.coinSequence, self.igniteImages, self.buttons] = [{}, {}, {}]
+        self.buttons['pause'] = self.loadImage('sprites/pause.png')
+        self.buttons['play'] = self.loadImage('sprites/play.png')
+        self.buttons['exit'] = self.loadImage('sprites/exit.png')
+        self.buttons['reset'] = self.loadImage('sprites/reset.png')
+        self.buttons['settings'] = self.loadImage('sprites/settings.png')
+
     def loadSprites(self):  # called only once
+        self.loadIndividualSprites()
         self.coinCoordsRange = [
             (self.width//(self.coinSize+self.coinSpacing)),
             (self.trueHeight//(self.coinSize+self.coinSpacing))]
-        [self.coinSequence, self.igniteImages, self.buttons] = [{}, {}, {}]
-        self.igniteSpriteHeights = ()
         for i in range(4):
             image = self.loadImage('sprites/coin'+str(i)+'.png')
             self.coinSequence[i] = self.scaleImage(image, self.scale)
@@ -339,10 +340,8 @@ class MyApp(App):
             image = self.loadImage('sprites/coin'+str(i)+'.png')
             image = self.scaleImage(image, self.scale)
             self.coinSequence[6-i] = image.transpose(Image.FLIP_LEFT_RIGHT)
-        self.scottyImages = {0: self.loadImage('sprites/scotty0.png'),
-                             1: self.loadImage('sprites/scotty1.png'),
-                             2: self.loadImage('sprites/scotty2.png'),
-                             -1: self.loadImage('sprites/airborne.png')}
+        for i in range(3): self.scottyImages[i] = \
+            self.loadImage('sprites/scotty'+str(i)+'.png')
         for imageKey in self.scottyImages:
             self.scottyImages[imageKey] = \
                 self.scaleImage(self.scottyImages[imageKey], self.scale)
@@ -351,34 +350,31 @@ class MyApp(App):
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
-        for i in range(16): self.igniteImages[i/10] = self.scaleImage(
+        for i in range(17): self.igniteImages[i/10] = self.scaleImage(
             self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
-        self.buttons['pause'] = self.loadImage('sprites/pause.png')
-        self.buttons['play'] = self.loadImage('sprites/play.png')
-        self.buttons['exit'] = self.loadImage('sprites/exit.png')
-        self.buttons['reset'] = self.loadImage('sprites/reset.png')
-        self.buttons['settings'] = self.loadImage('sprites/settings.png')
+        self.igniteImages[1.7] = self.igniteImages[1.5].\
+            transpose(Image.FLIP_LEFT_RIGHT)
+        self.igniteImages[1.8] = self.igniteImages[1.6].\
+            transpose(Image.FLIP_LEFT_RIGHT)
         for button in self.buttons:
             scale = self.buttonSizes/self.buttons[button].size[0]
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
 
     def restartApp(self):
-        printer.tp1ReadMe()
+        # printer.tp1ReadMe()
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
-        self.currentRun = 0
-        self.difficulty = 'medium'
-        self.loadSprites()
-        self.player = Scotty(self, self.scottyImages, self.igniteImages)
-        [self.points, self.movement, self.speed] = \
-            [0, 10*self.scale, 2*self.scale]
-        [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
+        [self.currentRun, self.points] = [0, 0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
-        [self.coinStart, self.staticTime] = [False, False]
+        self.kill = False
+        self.loadSprites()
+        [self.movement, self.speed] = [10*self.scale, 2*self.scale]
+        [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
+        [self.downInitial, self.upInitial, self.timeSincePaused,
+         self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
+                              time.time()+1]
+        self.player = Scotty(self, self.scottyImages, self.igniteImages)
+        [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
-        self.timeInitial = time.time()+1
-        self.downInitial = time.time()-1
-        self.upInitial = time.time()-1
-        self.timeSincePaused = time.time()-1
         self.currentChunk = Chunk(self, False, 0)
         self.newChunk = Chunk(self, False, self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
@@ -400,8 +396,15 @@ class MyApp(App):
             image.cachedPhotoImage = ImageTk.PhotoImage(image)
         return image.cachedPhotoImage
 
+    def killAll(self):
+        [self.gameOver, self.paused] = [True, True]
+        [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
+        [self.miniXSize, self.miniYSize] = [self.killXSize/9, self.killYSize/9]
+        [self.killX, self.killY] = [self.width/2, (self.trueHeight/2)+self.barY]
+
     def manageAll(self):  # deletes and adds objects based on locations
-        [newCoins, newBeams] = [[], []]
+        print(len(self.beams))
+        [newCoins, newBeams, kill] = [[], [], False]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
                                       self.newChunk.x)
@@ -409,8 +412,8 @@ class MyApp(App):
         for coin in self.coins:
             if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
-            if not self.invincible:
-                if beam.interacts(self, self.player): self.restartApp()
+            if (not self.invincible) and (beam.interacts(self, self.player)):
+                kill = True
             if not beam.outOfBounds(): newBeams += [beam]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
@@ -418,6 +421,7 @@ class MyApp(App):
             self.drops += [BackDrop(self, False, recentX)]
         [self.coins, self.beams] = [newCoins, newBeams]
         self.specialCoin.changeTimeState(self)
+        if kill: self.killAll()
         self.checkCoinInteraction()
 
     def moveAll(self):  # moves all objects at various speeds
@@ -473,6 +477,9 @@ class MyApp(App):
         if event.key.lower() == 'd': self.debug = not self.debug
         elif event.key.lower() == 'up': self.speed += 1
         elif event.key.lower() == 'down': self.speed -= 1
+        elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
+        elif (event.key.lower() == 'left') and (self.difficultyBase-
+                        self.diffInc > 0): self.difficultyBase -= self.diffInc
         elif event.key.lower() == 'i': self.invincible = not self.invincible
         elif event.key.lower() == 'c': printer.printer(self)
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
@@ -490,6 +497,11 @@ class MyApp(App):
                                           self.coinSequence, self.coinSize)
         for beam in self.beams: beam.draw(self, canvas)
         self.drawStatusBar(canvas)
+        if self.gameOver: self.drawGameOver(canvas)
+
+    def drawGameOver(self, canvas):
+        box1 = []
+        box2 = []
 
     def drawStatusBar(self, canvas):
         self.drawButtons(canvas)
@@ -510,7 +522,7 @@ class MyApp(App):
         font = 'Times', str(fontSize), 'bold'
         if self.currentRun >= self.longestRun:
             text = 'High Score! '+str(self.currentRun//100)+'m'
-            colors = ['black', 'gold']
+            colors = ['darkgrey', 'gold']
         else:
             text = 'Current Run '+str(self.currentRun//100)+'m'
             colors = ['lightgrey', 'black']
