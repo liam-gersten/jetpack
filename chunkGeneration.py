@@ -84,6 +84,20 @@ def coinGenerator(app, chunk, x):
         chunk = coinChunk.place(chunk, 'c')
     return chunk
 
+def missileGenerator(app, difficulty, byPass):
+    if not byPass:
+        missileProbability = ((3*difficulty)/800)+(1/8)
+        perfectDistribution = []
+        for i in range(int(missileProbability*100)): perfectDistribution += [1]
+        for i in range(100-int(missileProbability*100)):
+            perfectDistribution += [0]
+    if byPass or (random.choice(perfectDistribution) == 1):
+        missileSize = app.missile.size[1]/2
+        y = random.randrange(int(app.barY+missileSize),
+                             int(app.height-missileSize))
+        waitTime = ((3*difficulty)/100)+1
+        app.warnings += [jetpack.Exclamation(app, y, waitTime)]
+
 # gets upperBeamRange from curves of time and difficulty value
 def difficultyWrapper(app, chunk, x):
     difficultyCurves = {'easy': {'a': 5, 'b': 0},  # y = b + ax
@@ -92,6 +106,7 @@ def difficultyWrapper(app, chunk, x):
     difficulty = app.difficultyBase+(curve['a']*((time.time()-
                             app.timeInitial)/60))+curve['b']
     upperBeamRange = int(difficulty/20)+1  # second curve
+    missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
     return coinGenerator(app, chunk, x)
 

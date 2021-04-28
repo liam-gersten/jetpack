@@ -18,20 +18,20 @@ def minDistance(pa, pb, px):
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 def drawBeam(app, canvas, x1, y1, x2, y2):
-    widths = random.choice([[15, 12, 9, 6], [12, 10, 6, 4], [13, 13, 9, 5],
-                            [14, 11, 7, 4]])
+    widths = random.choice([[11, 10, 9, 6], [10, 6, 4, 2], [10, 9, 7, 5],
+                            [10, 7, 5, 3]])
     canvas.create_line(x1, y1, x2, y2, fill='red4', width=widths[0]*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill='red3', width=widths[1]*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill='red2', width=widths[2]*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill='red',  width=widths[2]*app.scale)
     canvas.create_oval(x1-(app.cellSize/3), y1-(app.cellSize/3),
-            x1+(app.cellSize/3), y1+(app.cellSize/3), fill='silver')
+            x1+(app.cellSize/3), y1+(app.cellSize/3), fill='black')
     canvas.create_oval(x2-(app.cellSize/3), y2-(app.cellSize/3),
-            x2+(app.cellSize/3), y2+(app.cellSize/3), fill='silver')
+            x2+(app.cellSize/3), y2+(app.cellSize/3), fill='black')
     canvas.create_oval(x1-(app.cellSize/4), y1-(app.cellSize/4),
-            x1+(app.cellSize/4), y1+(app.cellSize/4), fill='darkGrey')
+            x1+(app.cellSize/4), y1+(app.cellSize/4), fill='darkgrey')
     canvas.create_oval(x2-(app.cellSize/4), y2-(app.cellSize/4),
-            x2+(app.cellSize/4), y2+(app.cellSize/4), fill='darkGrey')
+            x2+(app.cellSize/4), y2+(app.cellSize/4), fill='darkgrey')
     canvas.create_oval(x1-(app.cellSize/10), y1-(app.cellSize/10),
             x1+(app.cellSize/10), y1+(app.cellSize/10), fill='red')
     canvas.create_oval(x2-(app.cellSize/10), y2-(app.cellSize/10),
@@ -147,7 +147,6 @@ class staticBeam():  # does not move
     def draw(self, app, canvas):
         drawBeam(app, canvas, self.x1, self.y1, self.x2, self.y2)
 
-
 class verticleBeam():  # moves vertically
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.width = app.cellSize
@@ -242,15 +241,46 @@ class rotatingBeam():  # rotate left or right
                             self.centerX+dx, self.centerY+dy]
         drawBeam(app, canvas, x1, y1, x2, y2)
 
-class missile():
-    def __init__(self, app, x, y):
-        [self.x, self.y] = [x, y]  # load sprites
+class Missile():
+    def __init__(self, app, y):
+        self.fireStart = time.time()
+        self.x = app.width+(app.missile.size[0]/2)
+        self.y = y
 
-    def updateCoords(self, app):
-        pass
+    def move(self, app):
+        if (int((time.time()-self.fireStart)*10))/10 > 0.5:
+            self.fireStart = time.time()
+        self.x -= app.missileMultiplier*app.speed
 
-    def draw(self, app, canvas):  #  waves from sin(time.time()-timeInitial)
-        pass
+    def draw(self, app, canvas):
+        self.drawFire(app, canvas)
+
+    def drawFire(self, app, canvas):
+        key = (int((time.time()-self.fireStart)*10))/10
+        if key > 0.5: key = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
+        image = ImageTk.PhotoImage(app.missileFire[key])
+        x = self.x+(app.missile.size[0]/2)+(app.missileFire[key].size[0]/2)
+        canvas.create_image(x, self.y, image=image)
+
+class Exclamation():
+    def __init__(self, app, y, waitTime):
+        self.y = y
+        self.waitTime = waitTime
+        self.startMissileWait = time.time()
+
+    def createMissile(self, app):
+        if time.time()-self.startMissileWait >= self.waitTime:
+            print('here!')
+            app.missiles += [Missile(app, self.y)]
+            return True
+        return False
+
+    def draw(self, app, canvas):
+        x = app.width-(2*app.cellSize)
+        fontSize = 50*(app.scale)
+        font = 'Times', str(int(fontSize)), 'bold'
+        canvas.create_text(x, self.y, fill='red', text='!', anchor='center',
+                           font=font)
 
 class dragon():
     def __init__(self, app, x, y):
@@ -286,7 +316,7 @@ class Cloud():  # background objects that do not influence gameplay
         self.sprite = app.scaleImage(self.sprite, self.size)
 
     def move(self, app):
-        if self.x + (self.sizeX*self.size) < 0: self.reDefine(app, app.width)
+        if self.x+(self.sizeX*self.size) < 0: self.reDefine(app, app.width)
         self.x -= self.speed//app.cloudMultiplier
 
     def draw(self, canvas):
@@ -306,7 +336,7 @@ class MyApp(App):
     def appStarted(self):
         [self._mvcCheck, self.invincible] = [True, False]
         [self.rows, self.cols] = [20, 40]
-        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 50, 5]
+        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 20, 5]
         self.pathfinderStall = 0.5
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
         [self.barPortion, self.standardizedWidth] = [9, 800]
@@ -321,17 +351,19 @@ class MyApp(App):
         [self.timerDelay, self.coinSize, self.coinSpacing] = \
             [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
+        self.missileMultiplier = 1.5
         self.restartApp()
 
     def loadIndividualSprites(self):
         self.scottyImages = {-1: self.loadImage('sprites/airborne.png')}
-        [self.coinSequence, self.igniteImages, self.buttons] = [{}, {}, {}]
+        [self.coinSequence, self.igniteImages, self.buttons, self.missileFire] \
+            = [{}, {}, {}, {}]
         self.buttons['pause'] = self.loadImage('sprites/pause.png')
         self.buttons['play'] = self.loadImage('sprites/play.png')
         self.buttons['exit'] = self.loadImage('sprites/exit.png')
         self.buttons['reset'] = self.loadImage('sprites/reset.png')
         self.buttons['settings'] = self.loadImage('sprites/settings.png')
-
+        self.missile = self.loadImage('sprites/missile.png')
 
     def loadSprites(self):  # called only once
         self.loadIndividualSprites()
@@ -361,6 +393,10 @@ class MyApp(App):
             transpose(Image.FLIP_LEFT_RIGHT)
         self.igniteImages[1.8] = self.igniteImages[1.6].\
             transpose(Image.FLIP_LEFT_RIGHT)
+        for i in range(3): self.missileFire[i/10] = self.scaleImage(
+            self.loadImage('sprites/blue'+str(i)+'.png'), self.scale)
+        for i in range(3, 6): self.missileFire[i/10] = self.missileFire[
+            (i-3)/10].transpose(Image.FLIP_LEFT_RIGHT)
         for button in self.buttons:
             scale = self.buttonSizes/self.buttons[button].size[0]
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
@@ -378,7 +414,8 @@ class MyApp(App):
          self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
                               time.time()+1]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
-        [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
+        [self.coins, self.clouds, self.beams, self.drops, self.missiles,
+         self.warnings] = [[], [], [], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
         self.currentChunk = Chunk(self, False, 0)
         self.firstChunk = False
@@ -411,7 +448,7 @@ class MyApp(App):
         [self.killX, self.killY] = [self.width/2, self.height+self.killYSize]
 
     def manageAll(self):  # deletes and adds objects based on locations
-        [newCoins, newBeams, kill] = [[], [], False]
+        [newCoins, newBeams, kill, newWarnings] = [[], [], False, []]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
                                       self.newChunk.x)
@@ -422,11 +459,14 @@ class MyApp(App):
             if (not self.invincible) and (beam.interacts(self, self.player)):
                 kill = True
             if not beam.outOfBounds(): newBeams += [beam]
+        for warning in self.warnings:
+            if not warning.createMissile(self): newWarnings += [warning]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]
             self.drops += [BackDrop(self, False, recentX)]
-        [self.coins, self.beams] = [newCoins, newBeams]
+        [self.coins, self.beams, self.warnings] = [newCoins, newBeams,
+                                                   newWarnings]
         if kill: self.killAll()
         self.checkCoinInteraction()
 
@@ -491,6 +531,8 @@ class MyApp(App):
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
         elif event.key.lower() == 'i': self.invincible = not self.invincible
         elif event.key.lower() == 'c': printer.printer(self)
+        elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
+                                                            50, True)
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
 
     def redrawAll(self, canvas):
@@ -505,6 +547,7 @@ class MyApp(App):
         for coin in self.coins: coin.draw(self, canvas, self.debug,
                                           self.coinSequence, self.coinSize)
         for beam in self.beams: beam.draw(self, canvas)
+        for exclamation in self.warnings: exclamation.draw(self, canvas)
         self.drawStatusBar(canvas)
         if self.gameOver: self.drawGameOver(canvas)
 
