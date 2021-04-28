@@ -365,7 +365,7 @@ class MyApp(App):
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
         [self.currentRun, self.points] = [0, 0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
-        self.kill = False
+        [self.kill, self.firstChunk] = [False, True]
         self.loadSprites()
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
         [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
@@ -376,6 +376,7 @@ class MyApp(App):
         [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
         self.currentChunk = Chunk(self, False, 0)
+        self.firstChunk = False
         self.newChunk = Chunk(self, False, self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
         for i in range((self.width//self.dropSize[0])+2):
@@ -398,12 +399,13 @@ class MyApp(App):
 
     def killAll(self):
         [self.gameOver, self.paused] = [True, True]
+        self.staticTime = time.time()+0
         [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
-        [self.miniXSize, self.miniYSize] = [self.killXSize/9, self.killYSize/9]
-        [self.killX, self.killY] = [self.width/2, (self.trueHeight/2)+self.barY]
+        [self.miniXSize, self.miniYSize] = [(9*self.killXSize)/10,
+                                            (9*self.killYSize)/10]
+        [self.killX, self.killY] = [self.width/2, self.height+self.killYSize]
 
     def manageAll(self):  # deletes and adds objects based on locations
-        print(len(self.beams))
         [newCoins, newBeams, kill] = [[], [], False]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
@@ -420,7 +422,6 @@ class MyApp(App):
             recentX = self.drops[-1].x+self.dropSize[0]
             self.drops += [BackDrop(self, False, recentX)]
         [self.coins, self.beams] = [newCoins, newBeams]
-        self.specialCoin.changeTimeState(self)
         if kill: self.killAll()
         self.checkCoinInteraction()
 
@@ -435,6 +436,9 @@ class MyApp(App):
         self.manageAll()
 
     def timerFired(self):
+        if self.gameOver and (self.killY > (self.trueHeight/2)+self.barY):
+            self.killY -= 5*self.scale
+        self.specialCoin.changeTimeState(self)
         if not self.paused: self.moveAll()
         if self.player.up: self.player.move(self,
             (-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
@@ -500,8 +504,12 @@ class MyApp(App):
         if self.gameOver: self.drawGameOver(canvas)
 
     def drawGameOver(self, canvas):
-        box1 = []
-        box2 = []
+        box1 = [self.killX-self.killXSize, self.killY-self.killYSize,
+                self.killX+self.killXSize, self.killY+self.killYSize]
+        box2 = [self.killX-self.miniXSize, self.killY-self.miniYSize,
+                self.killX+self.miniXSize, self.killY+self.miniYSize]
+        canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3], fill='black')
+        canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
 
     def drawStatusBar(self, canvas):
         self.drawButtons(canvas)

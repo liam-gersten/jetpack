@@ -12,8 +12,10 @@ class MiniChunk():  # small 2D list of a certain object
             for r in range(rows):
                 row = [id for i in range(cols)]
                 testList += [row]
-            row = random.randrange(2, app.rows-len(testList))
-            col = random.randrange(2, app.cols-len(testList[0]))
+            if app.firstChunk: firstCol = app.cols/2
+            else: firstCol = 3
+            row = random.randrange(0, app.rows-len(testList))
+            col = random.randrange(firstCol, app.cols-len(testList[0]))
             if self.checkAvalibility(app, chunk, testList, row, col):
                 [self.literal, self.row, self.col] = [testList, row, col]
                 break  # ready to place on the main test chunk
