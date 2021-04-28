@@ -17,14 +17,25 @@ def minDistance(pa, pb, px):
     else: return abs(((abVector[0])*(axVector[1]))-((abVector[1])*
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
-def drawBeam(app, canvas, x1, y1, angle1, x2, y2, angle2):
+def drawBeam(app, canvas, x1, y1, x2, y2):
     widths = random.choice([[15, 12, 9, 6], [12, 10, 6, 4], [13, 13, 9, 5],
                             [14, 11, 7, 4]])
     canvas.create_line(x1, y1, x2, y2, fill='red4', width=widths[0]*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill='red3', width=widths[1]*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill='red2', width=widths[2]*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill='red',  width=widths[2]*app.scale)
-
+    canvas.create_oval(x1-(app.cellSize/3), y1-(app.cellSize/3),
+            x1+(app.cellSize/3), y1+(app.cellSize/3), fill='silver')
+    canvas.create_oval(x2-(app.cellSize/3), y2-(app.cellSize/3),
+            x2+(app.cellSize/3), y2+(app.cellSize/3), fill='silver')
+    canvas.create_oval(x1-(app.cellSize/4), y1-(app.cellSize/4),
+            x1+(app.cellSize/4), y1+(app.cellSize/4), fill='darkGrey')
+    canvas.create_oval(x2-(app.cellSize/4), y2-(app.cellSize/4),
+            x2+(app.cellSize/4), y2+(app.cellSize/4), fill='darkGrey')
+    canvas.create_oval(x1-(app.cellSize/10), y1-(app.cellSize/10),
+            x1+(app.cellSize/10), y1+(app.cellSize/10), fill='red')
+    canvas.create_oval(x2-(app.cellSize/10), y2-(app.cellSize/10),
+            x2+(app.cellSize/10), y2+(app.cellSize/10), fill='red')
 
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
@@ -134,11 +145,8 @@ class staticBeam():  # does not move
                 [self.x2, self.y2], [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
-        drawBeam(app, canvas, self.x1, self.y1, False, self.x2, self.y2, False)
-        canvas.create_oval(self.x1-(self.width/3), self.y1-(self.width/3),
-                self.x1+(self.width/3), self.y1+(self.width/3), fill='red')
-        canvas.create_oval(self.x2-(self.width/3), self.y2-(self.width/3),
-                self.x2+(self.width/3), self.y2+(self.width/3), fill='red')
+        drawBeam(app, canvas, self.x1, self.y1, self.x2, self.y2)
+
 
 class verticleBeam():  # moves vertically
     def __init__(self, app, rows, cols, row, col, chunkX):
@@ -168,11 +176,7 @@ class verticleBeam():  # moves vertically
         else: yPosition = self.yScale*math.cos(2*math.pi*((
                 time.time()-app.timeSincePaused)%1))
         y = self.centerY+yPosition
-        drawBeam(app, canvas, x1, y, False, x2, y, False)
-        canvas.create_oval(x1-(self.width/3), y-(self.width/3),
-                           x1+(self.width/3), y+(self.width/3), fill='red')
-        canvas.create_oval(x2-(self.width/3), y-(self.width/3),
-                           x2+(self.width/3), y+(self.width/3), fill='red')
+        drawBeam(app, canvas, x1, y, x2, y)
 
 class horizontalBeam():  # moves horizontally
     def __init__(self, app, rows, cols, row, col, chunkX):
@@ -202,11 +206,7 @@ class horizontalBeam():  # moves horizontally
         else: xPosition = self.xScale*math.cos(2*math.pi* # animation curve
                     ((time.time()-app.timeSincePaused)%1))
         x = self.centerX+xPosition
-        drawBeam(app, canvas, x, y1, False, x, y2, False)
-        canvas.create_oval(x-(self.width/3), y1-(self.width/3),
-                           x+(self.width/3), y1+(self.width/3), fill='red')
-        canvas.create_oval(x-(self.width/3), y2-(self.width/3),
-                           x+(self.width/3), y2+(self.width/3), fill='red')
+        drawBeam(app, canvas, x, y1, x, y2)
 
 class rotatingBeam():  # rotate left or right
     def __init__(self, app, rows, cols, row, col, chunkX):
@@ -240,11 +240,7 @@ class rotatingBeam():  # rotate left or right
         [dy, dx] = [self.yScale*math.sin(angle), self.yScale*math.cos(angle)]
         [x1, y1, x2, y2] = [self.centerX-dx, self.centerY-dy,
                             self.centerX+dx, self.centerY+dy]
-        drawBeam(app, canvas, x1, y1, False, x2, y2, False)
-        canvas.create_oval(x1-(self.width/3), y1-(self.width/3),
-                           x1+(self.width/3), y1+(self.width/3), fill='red')
-        canvas.create_oval(x2-(self.width/3), y2-(self.width/3),
-                           x2+(self.width/3), y2+(self.width/3), fill='red')
+        drawBeam(app, canvas, x1, y1, x2, y2)
 
 class missile():
     def __init__(self, app, x, y):
@@ -335,6 +331,7 @@ class MyApp(App):
         self.buttons['exit'] = self.loadImage('sprites/exit.png')
         self.buttons['reset'] = self.loadImage('sprites/reset.png')
         self.buttons['settings'] = self.loadImage('sprites/settings.png')
+
 
     def loadSprites(self):  # called only once
         self.loadIndividualSprites()

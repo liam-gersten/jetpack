@@ -8,17 +8,18 @@ class MiniChunk():  # small 2D list of a certain object
         while True:  # keeps trying to make one that firs on the main chunk
             rows = random.randrange(ranges[0][0], ranges[0][1])
             cols = random.randrange(ranges[1][0], ranges[1][1])
-            testList = []
-            for r in range(rows):
-                row = [id for i in range(cols)]
-                testList += [row]
-            if app.firstChunk: firstCol = app.cols/2
-            else: firstCol = 3
-            row = random.randrange(0, app.rows-len(testList))
-            col = random.randrange(firstCol, app.cols-len(testList[0]))
-            if self.checkAvalibility(app, chunk, testList, row, col):
-                [self.literal, self.row, self.col] = [testList, row, col]
-                break  # ready to place on the main test chunk
+            if not (id == [] and ([rows, cols] == [2, 2])):
+                testList = []
+                for r in range(rows):
+                    row = [id for i in range(cols)]
+                    testList += [row]
+                if app.firstChunk: firstCol = app.cols/2
+                else: firstCol = 3
+                row = random.randrange(0, app.rows-len(testList))
+                col = random.randrange(firstCol, app.cols-len(testList[0]))
+                if self.checkAvalibility(app, chunk, testList, row, col):
+                    [self.literal, self.row, self.col] = [testList, row, col]
+                    break  # ready to place on the main test chunk
 
     # fits properly within the test chunk
     def checkAvalibility(self, app, chunk, miniChunk, startRow, startCol):
