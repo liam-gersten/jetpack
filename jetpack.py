@@ -66,19 +66,39 @@ class BackDrop():  # single sprite of Cohon University Center
             image=app.getCachedPhotoImage(app.dropImages[self.key]))
 
 class Coin():  # spinning coin object
-    def __init__(self, app, row, col, chunkX):
-        self.x = chunkX+(app.cellSize*col)+((app.coinSize+app.coinSpacing)/2)
-        self.y = app.barY+(app.cellSize*row)+((app.coinSize+app.coinSpacing)/2)
+    def __init__(self, app, row, col, chunkX, special):
+        if not special:
+            self.special = False
+            self.x = chunkX+(app.cellSize*col)+\
+                     ((app.coinSize+app.coinSpacing)/2)
+            self.y = app.barY+(app.cellSize*row)+\
+                     ((app.coinSize+app.coinSpacing)/2)
+        else:
+            self.special = True
+            self.standardSize = app.buttonSizes/app.coinSequence[0].size[0]
+            self.x = (app.buttonSizes/2)+app.buttonSpacing
+            self.y = app.barY/2
+            print(self.x, self.y)
+
+    def changeTimeState(self, app):
+        if time.time()-app.coinStart >= 1: app.coinStart = False
 
     def interacts(self, x, y, distance):  # player touches
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= distance: return True
         return False
 
     def draw(self, app, canvas, debug, sequence, size):
-        if app.staticTime: coinId = 1
+        if (app.staticTime) and (not self.special): coinId = 1
         else: coinId = int((time.time()*10)%7)  # ranges 0 - 6
-        canvas.create_image(self.x, self.y,
-                            image=app.getCachedPhotoImage(sequence[coinId]))
+        if not self.special: image = app.getCachedPhotoImage(sequence[coinId])
+        else:
+            if app.coinStart:
+                sizeScale = \
+            self.standardSize*(1+math.sin(math.pi*(time.time()-app.coinStart)))
+            else: sizeScale = self.standardSize
+            image = app.getCachedPhotoImage(
+                app.scaleImage(sequence[coinId], sizeScale))
+        canvas.create_image(self.x, self.y, image=image)
         if debug: canvas.create_rectangle(self.x-(size/2), self.y-(size/2),
                 self.x+(size/2), self.y+(size/2), fill='')
 
@@ -292,7 +312,6 @@ class MyApp(App):
         self.buttonSizes = (2*self.barY)//3
         self.buttonSpacing = (self.barY-self.buttonSizes)//2
         if self.width <= 400: self.buttonSizes = self.barY
-        print(self.buttonSizes)
         self.trueHeight = self.height-self.barY
         [self.timerDelay, self.coinSize, self.coinSpacing] = \
             [1, 16*self.scale, 4*self.scale]
@@ -351,11 +370,12 @@ class MyApp(App):
             [0, 10*self.scale, 2*self.scale]
         [self.coins, self.clouds, self.beams, self.drops] = [[], [], [], []]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
+        [self.coinStart, self.staticTime] = [False, False]
+        self.specialCoin = Coin(self, False, False, False, True)
         self.timeInitial = time.time()+1
         self.downInitial = time.time()-1
         self.upInitial = time.time()-1
         self.timeSincePaused = time.time()-1
-        self.staticTime = False
         self.currentChunk = Chunk(self, False, 0)
         self.newChunk = Chunk(self, False, self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
@@ -368,6 +388,7 @@ class MyApp(App):
         for coin in self.coins:
             if coin.interacts(self.player.x, self.player.y, coinSpace):
                 self.points += 1
+                self.coinStart = time.time()
             else: newCoins += [coin]
         self.coins = newCoins
 
@@ -393,6 +414,7 @@ class MyApp(App):
             recentX = self.drops[-1].x+self.dropSize[0]
             self.drops += [BackDrop(self, False, recentX)]
         [self.coins, self.beams] = [newCoins, newBeams]
+        self.specialCoin.changeTimeState(self)
         self.checkCoinInteraction()
 
     def moveAll(self):  # moves all objects at various speeds
@@ -467,9 +489,15 @@ class MyApp(App):
 
     def drawStatusBar(self, canvas):
         self.drawButtons(canvas)
+        self.drawUpperCoin(canvas)
 
     def drawUpperCoin(self, canvas):
-        pass
+        xPosition = (3*self.buttonSpacing)+self.buttonSizes
+        font = 'Times', '24', 'bold italic'
+        canvas.create_text(xPosition, self.barY/2, activefill='gold',
+                    fill='black', text=self.points, anchor='w', font=font)
+        self.specialCoin.draw(self, canvas, self.debug, self.coinSequence,
+                              self.coinSize)
 
     def drawCurrentRun(self, canvas):
         pass

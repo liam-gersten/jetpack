@@ -77,7 +77,7 @@ def coinGenerator(app, chunk, x):
         for row in range(len(coinChunk.literal)):
             for col in range(len(coinChunk.literal[0])):
                 app.coins += [jetpack.Coin(app, row+coinChunk.row,
-                                           col+coinChunk.col, x)]
+                                           col+coinChunk.col, x, False)]
         chunk = coinChunk.place(chunk, 'c')
     return chunk
 
