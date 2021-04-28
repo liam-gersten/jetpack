@@ -442,8 +442,8 @@ class MyApp(App):
         if not self.paused: self.moveAll()
         if self.player.up: self.player.move(self,
             (-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
-        elif not self.paused: self.player.move(self, (self.scale*
-            10*math.log(time.time()-self.downInitial+1)))
+        elif (not self.paused) or self.gameOver: self.player.move(self,
+                    (self.scale*10*math.log(time.time()-self.downInitial+1)))
 
     def mousePressed(self, event):
         if ((self.barY-self.buttonSizes)/2) <= event.y <= self.barY-\
@@ -508,8 +508,13 @@ class MyApp(App):
                 self.killX+self.killXSize, self.killY+self.killYSize]
         box2 = [self.killX-self.miniXSize, self.killY-self.miniYSize,
                 self.killX+self.miniXSize, self.killY+self.miniYSize]
-        canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3], fill='black')
+        fontSize = 50*(self.width//self.standardizedWidth)
+        font = 'Times', str(fontSize), 'bold'
+        canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3],
+                                fill='darkgrey')
         canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
+        canvas.create_text(self.killX, self.killY-(self.killYSize/5),
+            fill='red', text='Game Over!', anchor='center', font=font)
 
     def drawStatusBar(self, canvas):
         self.drawButtons(canvas)
@@ -518,7 +523,7 @@ class MyApp(App):
 
     def drawUpperCoin(self, canvas):
         xPosition = (3*self.buttonSpacing)+self.buttonSizes
-        font = 'Times', '24', 'bold italic'
+        font = 'Times', str(int(24*self.scale)), 'bold italic'
         canvas.create_text(xPosition, self.barY/2, activefill='gold',
                     fill='black', text=self.points, anchor='w', font=font)
         self.specialCoin.draw(self, canvas, self.debug, self.coinSequence,
