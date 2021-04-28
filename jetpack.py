@@ -323,6 +323,7 @@ class MyApp(App):
         self.cellSize = self.width/self.cols
         self.cloudNumer = 3
         self.longestRun = 0
+        self.currentRun = 0
         self.restartApp()
 
     def loadSprites(self):  # called only once
@@ -363,6 +364,8 @@ class MyApp(App):
 
     def restartApp(self):
         printer.tp1ReadMe()
+        if self.currentRun > self.longestRun: self.longestRun = self.currentRun
+        self.currentRun = 0
         self.difficulty = 'medium'
         self.loadSprites()
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
@@ -407,7 +410,7 @@ class MyApp(App):
             if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
             if not self.invincible:
-                if beam.interacts(self, self.player): exit()
+                if beam.interacts(self, self.player): self.restartApp()
             if not beam.outOfBounds(): newBeams += [beam]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
@@ -418,6 +421,7 @@ class MyApp(App):
         self.checkCoinInteraction()
 
     def moveAll(self):  # moves all objects at various speeds
+        self.currentRun += self.speed
         self.newChunk.x -= self.speed
         self.currentChunk.x -= self.speed
         for cloud in self.clouds: cloud.move(self)
@@ -490,6 +494,7 @@ class MyApp(App):
     def drawStatusBar(self, canvas):
         self.drawButtons(canvas)
         self.drawUpperCoin(canvas)
+        self.drawCurrentRun(canvas)
 
     def drawUpperCoin(self, canvas):
         xPosition = (3*self.buttonSpacing)+self.buttonSizes
@@ -500,7 +505,20 @@ class MyApp(App):
                               self.coinSize)
 
     def drawCurrentRun(self, canvas):
-        pass
+        xPosition = self.width/2
+        fontSize = 24*(self.width//self.standardizedWidth)
+        font = 'Times', str(fontSize), 'bold'
+        if self.currentRun >= self.longestRun:
+            text = 'High Score! '+str(self.currentRun//100)+'m'
+            colors = ['black', 'gold']
+        else:
+            text = 'Current Run '+str(self.currentRun//100)+'m'
+            colors = ['lightgrey', 'black']
+        canvas.create_rectangle(xPosition-4*self.buttonSizes,
+            self.buttonSpacing, xPosition+4*self.buttonSizes,
+            self.barY-self.buttonSpacing, fill=colors[0])
+        canvas.create_text(xPosition, self.barY/2, activefill='gold',
+                    fill=colors[1], text=text, anchor='center', font=font)
 
     def drawButtons(self, canvas):
         y = self.barY//2
