@@ -75,7 +75,8 @@ class Coin():  # spinning coin object
         return False
 
     def draw(self, app, canvas, debug, sequence, size):
-        coinId = int((time.time()*10)%7)  # ranges 0 - 6
+        if app.staticTime: coinId = 1
+        else: coinId = int((time.time()*10)%7)  # ranges 0 - 6
         canvas.create_image(self.x, self.y,
                             image=app.getCachedPhotoImage(sequence[coinId]))
         if debug: canvas.create_rectangle(self.x-(size/2), self.y-(size/2),
@@ -128,8 +129,10 @@ class verticleBeam():  # moves vertically
     def outOfBounds(self): return self.centerX+self.xScale+self.width < 0
 
     def interacts(self, app, player):
-        yPosition = self.yScale*math.cos(2*math.pi*
-                    ((time.time()-app.timeInitial)%1))
+        if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
+            app.staticTime-app.timeSincePaused)%1))
+        else: yPosition = self.yScale*math.cos(2*math.pi*((
+            time.time()-app.timeSincePaused)%1))
         pa = [self.centerX-self.xScale, self.centerY+yPosition]
         pb = [self.centerX+self.xScale, self.centerY+yPosition]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
@@ -137,8 +140,10 @@ class verticleBeam():  # moves vertically
     def draw(self, app, canvas):
         [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
         # animation curve
-        yPosition = self.yScale*math.cos(2*math.pi*((time.time()-
-                                            app.timeInitial)%1))
+        if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
+                app.staticTime-app.timeSincePaused)%1))
+        else: yPosition = self.yScale*math.cos(2*math.pi*((
+                time.time()-app.timeSincePaused)%1))
         y = self.centerY+yPosition
         canvas.create_line(x1, y, x2, y, fill='green', width=10)
         canvas.create_oval(x1-(self.width/3), y-(self.width/3),
@@ -159,17 +164,20 @@ class horizontalBeam():  # moves horizontally
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
     def interacts(self, app, player):
-        xPosition = self.xScale*math.cos(2*math.pi*
-                    ((time.time()-app.timeInitial)%1))
+        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*((
+                    app.staticTime-app.timeSincePaused)%1))
+        else: xPosition = self.xScale*math.cos(2*math.pi*
+                    ((time.time()-app.timeSincePaused)%1))
         pa = [self.centerX+xPosition, self.centerY-self.yScale]
         pb = [self.centerX+xPosition, self.centerY+self.yScale]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         [y1, y2] = [self.centerY-self.yScale, self.centerY+self.yScale]
-        # animation curve
-        xPosition = self.xScale*math.cos(2*math.pi*((time.time()-
-                                            app.timeInitial)%1))
+        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*((
+                    app.staticTime-app.timeSincePaused)%1))
+        else: xPosition = self.xScale*math.cos(2*math.pi* # animation curve
+                    ((time.time()-app.timeSincePaused)%1))
         x = self.centerX+xPosition
         canvas.create_line(x, y1, x, y2, fill='green', width=10)
         canvas.create_oval(x-(self.width/3), y1-(self.width/3),
@@ -190,7 +198,9 @@ class rotatingBeam():  # rotate left or right
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
     def interacts(self, app, player):
-        timeStamp = 2*((time.time()-app.timeInitial)%1)
+        if app.staticTime:
+            timeStamp = 2*((app.staticTime-app.timeSincePaused)%1)
+        else: timeStamp = 2*((time.time()-app.timeSincePaused)%1)
         angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
         [dy, dx] = [self.yScale*math.sin(angle),
                     self.yScale*math.cos(angle)]
@@ -199,7 +209,9 @@ class rotatingBeam():  # rotate left or right
                (player.sizeX/2)
 
     def draw(self, app, canvas):  # animation curve below
-        timeStamp = 2*((time.time()-app.timeInitial)%1)
+        if app.staticTime:
+            timeStamp = 2*((app.staticTime-app.timeSincePaused)%1)
+        else: timeStamp = 2*((time.time()-app.timeSincePaused)%1)
         angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
         if almostEqual(angle, 2*math.pi): angle = 0
         [dy, dx] = [self.yScale*math.sin(angle), self.yScale*math.cos(angle)]
@@ -323,6 +335,9 @@ class MyApp(App):
             self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
         self.buttons['pause'] = self.loadImage('sprites/pause.png')
         self.buttons['play'] = self.loadImage('sprites/play.png')
+        self.buttons['exit'] = self.loadImage('sprites/exit.png')
+        self.buttons['reset'] = self.loadImage('sprites/reset.png')
+        self.buttons['settings'] = self.loadImage('sprites/settings.png')
         for button in self.buttons:
             scale = self.buttonSizes/self.buttons[button].size[0]
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
@@ -339,6 +354,8 @@ class MyApp(App):
         self.timeInitial = time.time()+1
         self.downInitial = time.time()-1
         self.upInitial = time.time()-1
+        self.timeSincePaused = time.time()-1
+        self.staticTime = False
         self.currentChunk = Chunk(self, False, 0)
         self.newChunk = Chunk(self, False, self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
@@ -397,10 +414,13 @@ class MyApp(App):
     def mousePressed(self, event):
         if ((self.barY-self.buttonSizes)/2) <= event.y <= self.barY-\
                 ((self.barY-self.buttonSizes)/2):
-            print('in bar')
             if self.width-self.buttonSpacing-self.buttonSizes <= event.x <= \
                     self.width-self.buttonSpacing:
                 self.paused = not self.paused
+                if self.paused: self.staticTime = time.time()+0
+                else:
+                    self.timeSincePaused = time.time()
+                    self.staticTime = False
             if self.width-(2*(self.buttonSpacing+self.buttonSizes)) <= event.x \
                     <= self.width-(2*self.buttonSpacing)-self.buttonSizes:
                 self.restartApp()
@@ -408,7 +428,11 @@ class MyApp(App):
                     <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes):
                 self.settingsOpen = not self.settingsOpen
                 self.paused = not self.paused
-        elif not self.player.up:  # falling
+                if self.paused: self.staticTime = time.time()+0
+                else:
+                    self.timeSincePaused = time.time()
+                    self.staticTime = False
+        elif (not self.player.up) and (not self.paused):  # falling
             [self.player.airborne, self.player.up] = [True, True]
             [self.player.sizeX, self.player.sizeY] = [35*self.scale,
                                                       46*self.scale]
@@ -421,10 +445,8 @@ class MyApp(App):
 
     def keyPressed(self, event):
         if event.key.lower() == 'd': self.debug = not self.debug
-        elif event.key.lower() == 'r': self.restartApp()
         elif event.key.lower() == 'up': self.speed += 1
         elif event.key.lower() == 'down': self.speed -= 1
-        elif event.key.lower() == 'p': self.paused = not self.paused
         elif event.key.lower() == 'i': self.invincible = not self.invincible
         elif event.key.lower() == 'c': printer.printer(self)
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
@@ -460,14 +482,11 @@ class MyApp(App):
         if self.paused: image = ImageTk.PhotoImage(self.buttons['play'])
         else: image = ImageTk.PhotoImage(self.buttons['pause'])
         canvas.create_image(pausedX, y, image=image)
-        canvas.create_rectangle(restartX-(self.buttonSizes/2),
-            y-(self.buttonSizes/2), restartX+(self.buttonSizes/2),
-            y+(self.buttonSizes/2), fill='grey')
-        canvas.create_rectangle(settingsX-(self.buttonSizes/2),
-            y-(self.buttonSizes/2), settingsX+(self.buttonSizes/2),
-            y+(self.buttonSizes/2), fill='red')
-
-
+        if self.settingsOpen: image = ImageTk.PhotoImage(self.buttons['exit'])
+        else: image = ImageTk.PhotoImage(self.buttons['settings'])
+        canvas.create_image(settingsX, y, image=image)
+        image = ImageTk.PhotoImage(self.buttons['reset'])
+        canvas.create_image(restartX, y, image=image)
 
     def drawSky(self, canvas):
         canvas.create_rectangle(0, self.barY, self.width, self.height,
