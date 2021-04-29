@@ -18,12 +18,13 @@ def minDistance(pa, pb, px):
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 def drawBeam(app, canvas, x1, y1, x2, y2):
+    color = ['red4', 'red3', 'red2', 'red']
+    if app.timeDilation != 1: color = ['forest green', 'lime green', 'green2',
+                                        'spring green']
     widths = random.choice([[11, 10, 9, 6], [10, 6, 4, 2], [10, 9, 7, 5],
                             [10, 7, 5, 3]])
-    canvas.create_line(x1, y1, x2, y2, fill='red4', width=widths[0]*app.scale)
-    canvas.create_line(x1, y1, x2, y2, fill='red3', width=widths[1]*app.scale)
-    canvas.create_line(x1, y1, x2, y2, fill='red2', width=widths[2]*app.scale)
-    canvas.create_line(x1, y1, x2, y2, fill='red',  width=widths[2]*app.scale)
+    for i in range(4): canvas.create_line(x1, y1, x2, y2,
+                    fill=color[i], width=widths[i]*app.scale)
     canvas.create_oval(x1-(app.cellSize/3), y1-(app.cellSize/3),
             x1+(app.cellSize/3), y1+(app.cellSize/3), fill='black')
     canvas.create_oval(x2-(app.cellSize/3), y2-(app.cellSize/3),
@@ -36,6 +37,8 @@ def drawBeam(app, canvas, x1, y1, x2, y2):
             x1+(app.cellSize/10), y1+(app.cellSize/10), fill='red')
     canvas.create_oval(x2-(app.cellSize/10), y2-(app.cellSize/10),
             x2+(app.cellSize/10), y2+(app.cellSize/10), fill='red')
+    if app.timeDilation != 1: canvas.create_image(x1+((x2-x1)/2),
+                y1+((y2-y1)/2), image=ImageTk.PhotoImage(app.clock))
 
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
@@ -162,8 +165,8 @@ class verticleBeam():  # moves vertically
     def interacts(self, app, player):
         if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
             app.staticTime-app.timeSincePaused)%1))
-        else: yPosition = self.yScale*math.cos(2*math.pi*((
-            time.time()-app.timeSincePaused)%1))
+        else: yPosition = self.yScale*math.cos(2*math.pi*(((
+            time.time()-app.timeSincePaused)/app.timeDilation)%1))
         pa = [self.centerX-self.xScale, self.centerY+yPosition]
         pb = [self.centerX+self.xScale, self.centerY+yPosition]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
@@ -172,8 +175,8 @@ class verticleBeam():  # moves vertically
         [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
         if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
                 app.staticTime-app.timeSincePaused)%1)) # animation curve
-        else: yPosition = self.yScale*math.cos(2*math.pi*((
-                time.time()-app.timeSincePaused)%1))
+        else: yPosition = self.yScale*math.cos(2*math.pi*(((
+                time.time()-app.timeSincePaused)/app.timeDilation)%1))
         y = self.centerY+yPosition
         drawBeam(app, canvas, x1, y, x2, y)
 
@@ -190,20 +193,20 @@ class horizontalBeam():  # moves horizontally
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
     def interacts(self, app, player):
-        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*((
-                    app.staticTime-app.timeSincePaused)%1))
+        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*(((
+                    app.staticTime-app.timeSincePaused)/app.timeDilation)%1))
         else: xPosition = self.xScale*math.cos(2*math.pi*
-                    ((time.time()-app.timeSincePaused)%1))
+                    (((time.time()-app.timeSincePaused)/app.timeDilation)%1))
         pa = [self.centerX+xPosition, self.centerY-self.yScale]
         pb = [self.centerX+xPosition, self.centerY+self.yScale]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         [y1, y2] = [self.centerY-self.yScale, self.centerY+self.yScale]
-        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*((
-                    app.staticTime-app.timeSincePaused)%1))
+        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*(((
+                    app.staticTime-app.timeSincePaused)/app.timeDilation)%1))
         else: xPosition = self.xScale*math.cos(2*math.pi* # animation curve
-                    ((time.time()-app.timeSincePaused)%1))
+                    (((time.time()-app.timeSincePaused)/app.timeDilation)%1))
         x = self.centerX+xPosition
         drawBeam(app, canvas, x, y1, x, y2)
 
@@ -220,9 +223,10 @@ class rotatingBeam():  # rotate left or right
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
     def interacts(self, app, player):
-        if app.staticTime:
-            timeStamp = 2*((app.staticTime-app.timeSincePaused)%1)
-        else: timeStamp = 2*((time.time()-app.timeSincePaused)%1)
+        if app.staticTime: timeStamp = 2*(((app.staticTime-app.timeSincePaused)
+                                           /app.timeDilation)%1)
+        else: timeStamp = 2*(((time.time()-app.timeSincePaused)/
+                              app.timeDilation)%1)
         angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
         [dy, dx] = [self.yScale*math.sin(angle),
                     self.yScale*math.cos(angle)]
@@ -231,9 +235,10 @@ class rotatingBeam():  # rotate left or right
                (player.sizeX/2)
 
     def draw(self, app, canvas):  # animation curve below
-        if app.staticTime:
-            timeStamp = 2*((app.staticTime-app.timeSincePaused)%1)
-        else: timeStamp = 2*((time.time()-app.timeSincePaused)%1)
+        if app.staticTime: timeStamp = 2*(((app.staticTime-app.timeSincePaused)
+                /app.timeDilation)%1)
+        else: timeStamp = 2*(((time.time()-app.timeSincePaused)/
+                              app.timeDilation)%1)
         angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
         if almostEqual(angle, 2*math.pi): angle = 0
         [dy, dx] = [self.yScale*math.sin(angle), self.yScale*math.cos(angle)]
@@ -269,6 +274,8 @@ class Missile():
         canvas.create_image(self.x, self.y+shakeY,
                             image=ImageTk.PhotoImage(app.missile))
         self.drawFire(app, canvas, shakeY)
+        if app.timeDilation != 1: canvas.create_image(self.x, self.y,
+                                    image=ImageTk.PhotoImage(app.clock))
 
     def drawFire(self, app, canvas, shakeY):
         key = (int((time.time()-self.fireStart)*10))/10
@@ -298,41 +305,41 @@ class Exclamation():
 
 class TimeSlower():
     def __init__(self, app, x, y):
-        [self.x, self.y] = [x, y]
+        [self.x, self.y] = [app.width+x, y]
         self.active = False
         self.sprite = app.clockCircle
 
     def interacts(self, app, x, y):
-        if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX/2):
+        if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
             self.activate(app)
 
     def activate(self, app):
         [self.active, app.powerUp] = [True, True]
-        # scale = app.buttonSizes/self.sprite.size[0]
-        scale = 1
-        self.sprite = app.scaleImage(app.clockCircle, scale)
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
-        app.timeDilation = 2
+        app.timeDilation = 3
+        app.speed = app.speed/app.timeDilation
 
     def manage(self, app):
         if (not self.active) and (self.x+self.sprite.size[0] < 0): return False
-        elif not self.active: self.x -= app.speed
+        elif not self.active:
+            self.x -= app.speed
+            if self.interacts(app, app.player.x, app.player.y):
+                self.activate(app)
         elif time.time()-self.timeInitial >= 15:
             app.powerUp = False
+            app.speed = app.speed*app.timeDilation
             app.timeDilation = 1
             return True
         return False
 
     def draw(self, app, canvas):
-        print(self.x, self.y)
-        if not self.active: yChange = math.sin(2*time.time())
+        if not self.active: yChange = 5*math.sin(5*time.time())*app.scale
         else: yChange = 0
-        print('here')
         canvas.create_image(self.x, self.y+yChange,
                             image=ImageTk.PhotoImage(app.clockCircle))
         if self.active:
-            timer = round(15-(time.time()-self.timeInitial), 100)
+            timer = int(15-(time.time()-self.timeInitial))
             font = 'Times', str(int(24*app.scale)), 'bold italic'
             canvas.create_text(self.x+app.barY, self.y, fill='black',
                     text=timer, anchor='center', font=font)
@@ -391,7 +398,7 @@ class MyApp(App):
     def appStarted(self):
         [self._mvcCheck, self.invincible] = [True, False]
         [self.rows, self.cols] = [20, 40]
-        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 5, 5]
+        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 0, 5]
         self.pathfinderStall = 0.5
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
         [self.barPortion, self.standardizedWidth] = [9, 800]
@@ -526,8 +533,11 @@ class MyApp(App):
                 self.player.y)): kill = True
             if missile.x+(self.missile.size[0]/2)+self.missileFire[0].size[0] \
                     > 0: newMissiles += [missile]
-        for powerUp in self.powerUps:
-            if powerUp.manage(self): newPowerUps += [powerUp]
+        for power in self.powerUps:
+            if self.powerUp:
+                if power.active and (not power.manage(self)):
+                    newPowerUps += [power]
+            elif not power.manage(self): newPowerUps += [power]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]

@@ -111,9 +111,6 @@ def powerUpGenerator(app, chunk):
             [row, col] = [random.randint(0, len(chunk)-1),
                           random.randint(0, len(chunk[0])-1)]
             if chunk[row][col] == '':
-                print('made')
-                print((col*app.cellSize)+
-                (app.cellSize/2),app.barY+(row*app.cellSize)+(app.cellSize/2))
                 app.powerUps += [jetpack.TimeSlower(app, (col*app.cellSize)+
                 (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
                 break
@@ -129,7 +126,7 @@ def difficultyWrapper(app, chunk, x):
     curve = difficultyCurves[app.difficulty]
     difficulty = app.difficultyBase+(curve['a']*((time.time()-
                             app.timeInitial)/60))+curve['b']
-    app.speed = app.scale*(2+((difficulty*13)/100))
+    app.speed = app.scale*(2+((difficulty*13)/100))/app.timeDilation
     upperBeamRange = int(difficulty/20)+1  # second curve
     missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
