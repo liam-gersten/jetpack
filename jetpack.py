@@ -252,15 +252,30 @@ class Missile():
             self.fireStart = time.time()
         self.x -= app.missileMultiplier*app.speed
 
-    def draw(self, app, canvas):
-        self.drawFire(app, canvas)
+    def interacts(self, app, x, y):
+        [ax1, bx1] = [self.x-(app.missile.size[0]/2),
+                      self.x-(app.missile.size[0]/2)]
+        [ax2, bx2] = [self.x+(app.missile.size[0]/3),
+                      self.x+(app.missile.size[0]/3)]
+        [ay1, by1] = [self.y, self.y]
+        ay2 = self.y-(app.missile.size[1]/3)
+        by2 = self.y+(app.missile.size[1]/3)
+        return (minDistance([ax1, ay1], [ax2, ay2], [x, y]) <=
+                (app.player.sizeX/2)) or (minDistance([bx1, by1], [bx2, by2],
+                [x, y]) <= (app.player.sizeX/2))
 
-    def drawFire(self, app, canvas):
+    def draw(self, app, canvas):
+        shakeY = random.choice([-2, -1, 0, 1, 2])
+        canvas.create_image(self.x, self.y+shakeY,
+                            image=ImageTk.PhotoImage(app.missile))
+        self.drawFire(app, canvas, shakeY)
+
+    def drawFire(self, app, canvas, shakeY):
         key = (int((time.time()-self.fireStart)*10))/10
         if key > 0.5: key = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
         image = ImageTk.PhotoImage(app.missileFire[key])
         x = self.x+(app.missile.size[0]/2)+(app.missileFire[key].size[0]/2)
-        canvas.create_image(x, self.y, image=image)
+        canvas.create_image(x, self.y+shakeY, image=image)
 
 class Exclamation():
     def __init__(self, app, y, waitTime):
@@ -270,7 +285,6 @@ class Exclamation():
 
     def createMissile(self, app):
         if time.time()-self.startMissileWait >= self.waitTime:
-            print('here!')
             app.missiles += [Missile(app, self.y)]
             return True
         return False
@@ -281,6 +295,47 @@ class Exclamation():
         font = 'Times', str(int(fontSize)), 'bold'
         canvas.create_text(x, self.y, fill='red', text='!', anchor='center',
                            font=font)
+
+class TimeSlower():
+    def __init__(self, app, x, y):
+        [self.x, self.y] = [x, y]
+        self.active = False
+        self.sprite = app.clockCircle
+
+    def interacts(self, app, x, y):
+        if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX/2):
+            self.activate(app)
+
+    def activate(self, app):
+        [self.active, app.powerUp] = [True, True]
+        # scale = app.buttonSizes/self.sprite.size[0]
+        scale = 1
+        self.sprite = app.scaleImage(app.clockCircle, scale)
+        [self.x, self.y] = [app.width/5, app.barY/2]
+        self.timeInitial = time.time()
+        app.timeDilation = 2
+
+    def manage(self, app):
+        if (not self.active) and (self.x+self.sprite.size[0] < 0): return False
+        elif not self.active: self.x -= app.speed
+        elif time.time()-self.timeInitial >= 15:
+            app.powerUp = False
+            app.timeDilation = 1
+            return True
+        return False
+
+    def draw(self, app, canvas):
+        print(self.x, self.y)
+        if not self.active: yChange = math.sin(2*time.time())
+        else: yChange = 0
+        print('here')
+        canvas.create_image(self.x, self.y+yChange,
+                            image=ImageTk.PhotoImage(app.clockCircle))
+        if self.active:
+            timer = round(15-(time.time()-self.timeInitial), 100)
+            font = 'Times', str(int(24*app.scale)), 'bold italic'
+            canvas.create_text(self.x+app.barY, self.y, fill='black',
+                    text=timer, anchor='center', font=font)
 
 class dragon():
     def __init__(self, app, x, y):
@@ -336,7 +391,7 @@ class MyApp(App):
     def appStarted(self):
         [self._mvcCheck, self.invincible] = [True, False]
         [self.rows, self.cols] = [20, 40]
-        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 20, 5]
+        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 5, 5]
         self.pathfinderStall = 0.5
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
         [self.barPortion, self.standardizedWidth] = [9, 800]
@@ -351,7 +406,7 @@ class MyApp(App):
         [self.timerDelay, self.coinSize, self.coinSpacing] = \
             [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
-        self.missileMultiplier = 1.5
+        self.missileMultiplier = 2.5
         self.restartApp()
 
     def loadIndividualSprites(self):
@@ -359,11 +414,14 @@ class MyApp(App):
         [self.coinSequence, self.igniteImages, self.buttons, self.missileFire] \
             = [{}, {}, {}, {}]
         self.buttons['pause'] = self.loadImage('sprites/pause.png')
+        self.clockCircle = self.loadImage('sprites/clockCircle.png')
+        self.clock = self.loadImage('sprites/clock.png')
         self.buttons['play'] = self.loadImage('sprites/play.png')
         self.buttons['exit'] = self.loadImage('sprites/exit.png')
         self.buttons['reset'] = self.loadImage('sprites/reset.png')
         self.buttons['settings'] = self.loadImage('sprites/settings.png')
         self.missile = self.loadImage('sprites/missile.png')
+        self.missile = self.scaleImage(self.missile, 1.5)
 
     def loadSprites(self):  # called only once
         self.loadIndividualSprites()
@@ -394,9 +452,9 @@ class MyApp(App):
         self.igniteImages[1.8] = self.igniteImages[1.6].\
             transpose(Image.FLIP_LEFT_RIGHT)
         for i in range(3): self.missileFire[i/10] = self.scaleImage(
-            self.loadImage('sprites/blue'+str(i)+'.png'), self.scale)
+            self.loadImage('sprites/blue'+str(i)+'.png'), 1.5*self.scale)
         for i in range(3, 6): self.missileFire[i/10] = self.missileFire[
-            (i-3)/10].transpose(Image.FLIP_LEFT_RIGHT)
+            (i-3)/10].transpose(Image.FLIP_TOP_BOTTOM)
         for button in self.buttons:
             scale = self.buttonSizes/self.buttons[button].size[0]
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
@@ -406,16 +464,17 @@ class MyApp(App):
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
         [self.currentRun, self.points] = [0, 0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
-        [self.kill, self.firstChunk] = [False, True]
+        [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
         [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
         [self.downInitial, self.upInitial, self.timeSincePaused,
          self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
                               time.time()+1]
+        [self.timeDilation] = [1]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
-         self.warnings] = [[], [], [], [], [], []]
+         self.warnings, self.powerUps] = [[], [], [], [], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
         self.currentChunk = Chunk(self, False, 0)
         self.firstChunk = False
@@ -448,7 +507,8 @@ class MyApp(App):
         [self.killX, self.killY] = [self.width/2, self.height+self.killYSize]
 
     def manageAll(self):  # deletes and adds objects based on locations
-        [newCoins, newBeams, kill, newWarnings] = [[], [], False, []]
+        [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
+                    [], False, [], [], []]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
                                       self.newChunk.x)
@@ -461,12 +521,19 @@ class MyApp(App):
             if not beam.outOfBounds(): newBeams += [beam]
         for warning in self.warnings:
             if not warning.createMissile(self): newWarnings += [warning]
+        for missile in self.missiles:
+            if (not self.invincible) and (missile.interacts(self, self.player.x,
+                self.player.y)): kill = True
+            if missile.x+(self.missile.size[0]/2)+self.missileFire[0].size[0] \
+                    > 0: newMissiles += [missile]
+        for powerUp in self.powerUps:
+            if powerUp.manage(self): newPowerUps += [powerUp]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]
             self.drops += [BackDrop(self, False, recentX)]
-        [self.coins, self.beams, self.warnings] = [newCoins, newBeams,
-                                                   newWarnings]
+        [self.coins, self.beams, self.warnings, self.missiles, self.powerUps] =\
+            [newCoins, newBeams, newWarnings, newMissiles, newPowerUps]
         if kill: self.killAll()
         self.checkCoinInteraction()
 
@@ -478,6 +545,7 @@ class MyApp(App):
         for drop in self.drops: drop.move(self)
         for coin in self.coins: coin.x -= self.speed
         for beam in self.beams: beam.move(self)
+        for missile in self.missiles: missile.move(self)
         self.manageAll()
 
     def timerFired(self):
@@ -548,6 +616,8 @@ class MyApp(App):
                                           self.coinSequence, self.coinSize)
         for beam in self.beams: beam.draw(self, canvas)
         for exclamation in self.warnings: exclamation.draw(self, canvas)
+        for missile in self.missiles: missile.draw(self, canvas)
+        for powerUp in self.powerUps: powerUp.draw(self, canvas)
         self.drawStatusBar(canvas)
         if self.gameOver: self.drawGameOver(canvas)
 

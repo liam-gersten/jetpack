@@ -88,8 +88,8 @@ def missileGenerator(app, difficulty, byPass):
     if not byPass:
         missileProbability = ((3*difficulty)/800)+(1/8)
         perfectDistribution = []
-        for i in range(int(missileProbability*100)): perfectDistribution += [1]
-        for i in range(100-int(missileProbability*100)):
+        for i in range(int(missileProbability*50)): perfectDistribution += [1]
+        for i in range(100-int(missileProbability*50)):
             perfectDistribution += [0]
     if byPass or (random.choice(perfectDistribution) == 1):
         missileSize = app.missile.size[1]/2
@@ -98,6 +98,30 @@ def missileGenerator(app, difficulty, byPass):
         waitTime = ((3*difficulty)/100)+1
         app.warnings += [jetpack.Exclamation(app, y, waitTime)]
 
+def powerUpGenerator(app, chunk):
+    powerUpProbability = 0.5
+    perfectDistribution = []
+    for i in range(int(powerUpProbability*50)): perfectDistribution += \
+        random.choice([[1], [2], [3]])
+    for i in range(100-int(powerUpProbability*50)):
+        perfectDistribution += [0]
+    choice = random.choice(perfectDistribution)
+    if choice != 0:
+        while True:
+            [row, col] = [random.randint(0, len(chunk)-1),
+                          random.randint(0, len(chunk[0])-1)]
+            if chunk[row][col] == '':
+                print('made')
+                print((col*app.cellSize)+
+                (app.cellSize/2),app.barY+(row*app.cellSize)+(app.cellSize/2))
+                app.powerUps += [jetpack.TimeSlower(app, (col*app.cellSize)+
+                (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
+                break
+    elif choice == 2:  # power up 2
+        pass
+    elif choice == 3:  # power up 3
+        pass
+
 # gets upperBeamRange from curves of time and difficulty value
 def difficultyWrapper(app, chunk, x):
     difficultyCurves = {'easy': {'a': 5, 'b': 0},  # y = b + ax
@@ -105,9 +129,11 @@ def difficultyWrapper(app, chunk, x):
     curve = difficultyCurves[app.difficulty]
     difficulty = app.difficultyBase+(curve['a']*((time.time()-
                             app.timeInitial)/60))+curve['b']
+    app.speed = app.scale*(2+((difficulty*13)/100))
     upperBeamRange = int(difficulty/20)+1  # second curve
     missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
+    if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
 # makes blank 2D list to be called
