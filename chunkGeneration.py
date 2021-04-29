@@ -98,6 +98,14 @@ def missileGenerator(app, difficulty, byPass):
         waitTime = ((3*difficulty)/100)+1
         app.warnings += [jetpack.Exclamation(app, y, waitTime)]
 
+def getNewRowCol(chunk):
+    while True:
+        [row, col] = [random.randint(1, len(chunk)-2),
+                      random.randint(0, len(chunk[0])-1)]
+        if chunk[row][col] == '':
+            chunk[row][col] = 'c'
+            return [row, col]
+
 def powerUpGenerator(app, chunk):
     powerUpProbability = 0.5
     perfectDistribution = []
@@ -106,16 +114,12 @@ def powerUpGenerator(app, chunk):
     for i in range(100-int(powerUpProbability*50)):
         perfectDistribution += [0]
     choice = random.choice(perfectDistribution)
-    if choice != 0:
-        while True:
-            [row, col] = [random.randint(0, len(chunk)-1),
-                          random.randint(0, len(chunk[0])-1)]
-            if chunk[row][col] == '':
-                app.powerUps += [jetpack.TimeSlower(app, (col*app.cellSize)+
-                (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
-                break
-    elif choice == 2:  # power up 2
-        pass
+    if choice != 0: [row, col] = getNewRowCol(chunk)
+    if choice == 1: app.powerUps += [jetpack.TimeSlower(app, (col*app.cellSize)+
+        (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
+    elif choice == 2: app.powerUps += [jetpack.Invincibility(app, (col*
+        app.cellSize)+(app.cellSize/2), app.barY+(row*app.cellSize)+
+                                                (app.cellSize/2))]
     elif choice == 3:  # power up 3
         pass
 
@@ -128,7 +132,7 @@ def difficultyWrapper(app, chunk, x):
                             app.timeInitial)/60))+curve['b']
     app.speed = app.scale*(2+((difficulty*13)/100))/app.timeDilation
     upperBeamRange = int(difficulty/20)+1  # second curve
-    missileGenerator(app, difficulty, False)
+    if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
     if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)

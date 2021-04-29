@@ -19,12 +19,13 @@ def minDistance(pa, pb, px):
 
 def drawBeam(app, canvas, x1, y1, x2, y2):
     color = ['red4', 'red3', 'red2', 'red']
-    if app.timeDilation != 1: color = ['forest green', 'lime green', 'green2',
+    if app.timeDilation == 3: color = ['forest green', 'lime green', 'green2',
                                         'spring green']
     widths = random.choice([[11, 10, 9, 6], [10, 6, 4, 2], [10, 9, 7, 5],
                             [10, 7, 5, 3]])
-    for i in range(4): canvas.create_line(x1, y1, x2, y2,
-                    fill=color[i], width=widths[i]*app.scale)
+    if not app.invincible:
+        for i in range(4): canvas.create_line(x1, y1, x2, y2,
+                        fill=color[i], width=widths[i]*app.scale)
     canvas.create_oval(x1-(app.cellSize/3), y1-(app.cellSize/3),
             x1+(app.cellSize/3), y1+(app.cellSize/3), fill='black')
     canvas.create_oval(x2-(app.cellSize/3), y2-(app.cellSize/3),
@@ -34,11 +35,33 @@ def drawBeam(app, canvas, x1, y1, x2, y2):
     canvas.create_oval(x2-(app.cellSize/4), y2-(app.cellSize/4),
             x2+(app.cellSize/4), y2+(app.cellSize/4), fill='darkgrey')
     canvas.create_oval(x1-(app.cellSize/10), y1-(app.cellSize/10),
-            x1+(app.cellSize/10), y1+(app.cellSize/10), fill='red')
+            x1+(app.cellSize/10), y1+(app.cellSize/10), fill=color[3])
     canvas.create_oval(x2-(app.cellSize/10), y2-(app.cellSize/10),
-            x2+(app.cellSize/10), y2+(app.cellSize/10), fill='red')
-    if app.timeDilation != 1: canvas.create_image(x1+((x2-x1)/2),
+            x2+(app.cellSize/10), y2+(app.cellSize/10), fill=color[3])
+    if app.timeDilation == 3: canvas.create_image(x1+((x2-x1)/2),
                 y1+((y2-y1)/2), image=ImageTk.PhotoImage(app.clock))
+
+def managePowerUp(object, app):
+    if (not object.active) and (object.x+object.sprite.size[0] < 0):return False
+    elif not object.active:
+        object.x -= app.speed
+        if math.sqrt(((object.x-app.player.x)**2)+((object.y-app.player.y)**2))\
+                <= (app.player.sizeX): object.activate(app)
+    elif time.time()-object.timeInitial >= 15:
+        object.deactivate(app)
+        return True
+    return False
+
+def drawPowerUp(object, app, canvas):
+    if not object.active: yChange = 5*math.sin(5*time.time())*app.scale
+    else: yChange = 0
+    canvas.create_image(object.x, object.y+yChange,
+                        image=ImageTk.PhotoImage(object.sprite))
+    if object.active:
+        timer = int(15-(time.time()-object.timeInitial))
+        font = 'Times', str(int(24*app.scale)), 'bold italic'
+        canvas.create_text(object.x+app.barY, object.y, fill='black',
+                           text=timer, anchor='center', font=font)
 
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
@@ -66,6 +89,8 @@ class Scotty():  # class for player
         image = ImageTk.PhotoImage(self.images[key])
         canvas.create_image(self.x, self.y, image=image)
         if debug: printer.outlineScotty(self, canvas)
+        if app.invincible: canvas.create_image(self.x, self.y,
+                        image=ImageTk.PhotoImage(app.miniHeart))
 
     def drawFire(self, app, canvas):
         if self.up:  # rising
@@ -274,7 +299,7 @@ class Missile():
         canvas.create_image(self.x, self.y+shakeY,
                             image=ImageTk.PhotoImage(app.missile))
         self.drawFire(app, canvas, shakeY)
-        if app.timeDilation != 1: canvas.create_image(self.x, self.y,
+        if app.timeDilation == 3: canvas.create_image(self.x, self.y,
                                     image=ImageTk.PhotoImage(app.clock))
 
     def drawFire(self, app, canvas, shakeY):
@@ -303,6 +328,36 @@ class Exclamation():
         canvas.create_text(x, self.y, fill='red', text='!', anchor='center',
                            font=font)
 
+class Invincibility():
+    def __init__(self, app, x, y):
+        [self.x, self.y] = [app.width+x, y]
+        self.active = False
+        self.sprite = app.heart
+
+    def interacts(self, app, x, y):
+        if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
+            self.activate(app)
+
+    def activate(self, app):
+        [self.active, app.powerUp] = [True, True]
+        [self.x, self.y] = [app.width/5, app.barY/2]
+        self.timeInitial = time.time()
+        app.invincible = True
+        app.timeDilation = 1/2
+        app.speed = app.speed/app.timeDilation
+        app.missiles = []
+
+    def manage(self, app):
+        return managePowerUp(self, app)
+
+    def deactivate(self, app):
+        [app.invincible, app.powerUp] = [False, False]
+        app.speed = app.speed*app.timeDilation
+        app.timeDilation = 1
+
+    def draw(self, app, canvas):
+        drawPowerUp(self, app, canvas)
+
 class TimeSlower():
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
@@ -321,28 +376,15 @@ class TimeSlower():
         app.speed = app.speed/app.timeDilation
 
     def manage(self, app):
-        if (not self.active) and (self.x+self.sprite.size[0] < 0): return False
-        elif not self.active:
-            self.x -= app.speed
-            if self.interacts(app, app.player.x, app.player.y):
-                self.activate(app)
-        elif time.time()-self.timeInitial >= 15:
-            app.powerUp = False
-            app.speed = app.speed*app.timeDilation
-            app.timeDilation = 1
-            return True
-        return False
+        return managePowerUp(self, app)
+
+    def deactivate(self, app):
+        app.powerUp = False
+        app.speed = app.speed*app.timeDilation
+        app.timeDilation = 1
 
     def draw(self, app, canvas):
-        if not self.active: yChange = 5*math.sin(5*time.time())*app.scale
-        else: yChange = 0
-        canvas.create_image(self.x, self.y+yChange,
-                            image=ImageTk.PhotoImage(app.clockCircle))
-        if self.active:
-            timer = int(15-(time.time()-self.timeInitial))
-            font = 'Times', str(int(24*app.scale)), 'bold italic'
-            canvas.create_text(self.x+app.barY, self.y, fill='black',
-                    text=timer, anchor='center', font=font)
+        drawPowerUp(self, app, canvas)
 
 class dragon():
     def __init__(self, app, x, y):
@@ -423,6 +465,8 @@ class MyApp(App):
         self.buttons['pause'] = self.loadImage('sprites/pause.png')
         self.clockCircle = self.loadImage('sprites/clockCircle.png')
         self.clock = self.loadImage('sprites/clock.png')
+        self.heart = self.loadImage('sprites/heart.png')
+        self.miniHeart = self.loadImage('sprites/miniHeart.png')
         self.buttons['play'] = self.loadImage('sprites/play.png')
         self.buttons['exit'] = self.loadImage('sprites/exit.png')
         self.buttons['reset'] = self.loadImage('sprites/reset.png')
