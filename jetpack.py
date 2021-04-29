@@ -562,6 +562,12 @@ class MyApp(App):
         [self.respawnSizeX, self.respawnSizeY] = [self.killXSize/3,
                                                   self.killYSize/3]
 
+    def respawn(self):
+        [self.gameOver, self.paused] = [False, False]
+        self.points -= 500
+        self.powerUps += [Invincibility(self, self.player.x-self.width,
+                                        self.player.y)]
+
     def manageAll(self):  # deletes and adds objects based on locations
         [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
                     [], False, [], [], []]
@@ -618,6 +624,11 @@ class MyApp(App):
                     (self.scale*10*math.log(time.time()-self.downInitial+1)))
 
     def mousePressed(self, event):
+        if (self.points >= 500) and (self.gameOver):
+            box = [self.killX-self.respawnSizeX, self.killY-self.respawnSizeY,
+                    self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
+            if (box[0] <= event.x <= box[2]) and ((self.height/10)+box[1] <=
+                event.y <= (self.height/10)+box[3]): self.respawn()
         if ((self.barY-self.buttonSizes)/2) <= event.y <= self.barY-\
                 ((self.barY-self.buttonSizes)/2):
             if self.width-self.buttonSpacing-self.buttonSizes <= event.x <= \
