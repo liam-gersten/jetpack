@@ -52,7 +52,7 @@ def beamGenerator(app, chunk, upperBeamRange, x):
     while True:
         [tempBeams, tempChunk] = [[], copy.deepcopy(chunk)]
         for i in range(random.choice(beamNumbers)):
-            beamChunk = MiniChunk(app, chunk, [[2, 5], [2, 5]], [])
+            beamChunk = MiniChunk(app, chunk, [[2, 9], [2, 9]], [])
             tempBeams += [beamChunk]  # objects help until tested
             tempChunk = beamChunk.place(tempChunk, [])
         if conversionWrapper(app, tempChunk):  # pathfinder returns True
@@ -130,7 +130,7 @@ def difficultyWrapper(app, chunk, x):
     curve = difficultyCurves[app.difficulty]
     difficulty = app.difficultyBase+(curve['a']*((time.time()-
                             app.timeInitial)/60))+curve['b']
-    app.speed = app.scale*(2+((difficulty*13)/100))/app.timeDilation
+    app.speed = app.scale*(2+((difficulty*1)/10))/app.timeDilation
     upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)

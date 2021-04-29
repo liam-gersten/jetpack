@@ -71,8 +71,11 @@ class Scotty():  # class for player
         [self.up, self.airborne] = [False, True]
         self.images = images
         self.igniteImages = igniteImages
+        self.changeX = 0
 
     def move(self, app, changeY):
+        if self.up: self.changeX = random.choice([-1, 0, 1])
+        else: self.changeX = 0
         if app.barY+self.sizeY/2 < self.y+changeY < (app.height-(self.sizeY/2)):
             self.y += changeY  # within bounds of game
         elif self.y+changeY >= app.height-(self.sizeY/2):
@@ -87,7 +90,7 @@ class Scotty():  # class for player
         elif app.paused: key = 0
         else: key = int((time.time()*7*(app.speed/5))%3)  # ignite 1-15
         image = ImageTk.PhotoImage(self.images[key])
-        canvas.create_image(self.x, self.y, image=image)
+        canvas.create_image(self.x+self.changeX, self.y, image=image)
         if debug: printer.outlineScotty(self, canvas)
         if app.invincible: canvas.create_image(self.x, self.y,
                         image=ImageTk.PhotoImage(app.miniHeart))
@@ -99,7 +102,7 @@ class Scotty():  # class for player
             if key > 1.8: key = random.choice([1.5, 1.6, 1.7, 1.8])
             image = ImageTk.PhotoImage(self.igniteImages[key])
             y = startCoords[1]+((self.igniteImages[key].size[1])/2)
-            canvas.create_image(startCoords[0], y, image=image)
+            canvas.create_image(startCoords[0]+self.changeX, y, image=image)
 
 class BackDrop():  # single sprite of Cohon University Center
     def __init__(self, app, index, x):
@@ -439,7 +442,7 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 class MyApp(App):
     def appStarted(self):
         [self._mvcCheck, self.invincible] = [True, False]
-        [self.rows, self.cols] = [20, 40]
+        [self.rows, self.cols, self.points] = [20, 40, 0]
         [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 0, 5]
         self.pathfinderStall = 0.5
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
@@ -513,7 +516,7 @@ class MyApp(App):
     def restartApp(self):
         # printer.tp1ReadMe()
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
-        [self.currentRun, self.points] = [0, 0]
+        [self.currentRun] = [0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
@@ -556,6 +559,8 @@ class MyApp(App):
         [self.miniXSize, self.miniYSize] = [(9*self.killXSize)/10,
                                             (9*self.killYSize)/10]
         [self.killX, self.killY] = [self.width/2, self.height+self.killYSize]
+        [self.respawnSizeX, self.respawnSizeY] = [self.killXSize/3,
+                                                  self.killYSize/3]
 
     def manageAll(self):  # deletes and adds objects based on locations
         [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
@@ -680,6 +685,8 @@ class MyApp(App):
                 self.killX+self.killXSize, self.killY+self.killYSize]
         box2 = [self.killX-self.miniXSize, self.killY-self.miniYSize,
                 self.killX+self.miniXSize, self.killY+self.miniYSize]
+        box3 = [self.killX-self.respawnSizeX, self.killY-self.respawnSizeY,
+                self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
         fontSize = 50*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
         canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3],
@@ -687,6 +694,18 @@ class MyApp(App):
         canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
         canvas.create_text(self.killX, self.killY-(self.killYSize/5),
             fill='red', text='Game Over!', anchor='center', font=font)
+        if self.points < 500: box = 'red'
+        else: box = 'green'
+        canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
+                            (self.height/10)+box3[3], fill=box)
+        fontSize = 24*(self.width//self.standardizedWidth)
+        font = 'Times', str(fontSize), 'bold'
+        canvas.create_text(self.killX, self.killY+(self.height/15),
+                fill='black', text='Respawn?', font=font)
+        canvas.create_image(self.killX-(20*self.scale), self.killY+(
+            self.height/8), image=ImageTk.PhotoImage(self.coinSequence[0]))
+        canvas.create_text(self.killX+(15*self.scale), self.killY+(
+            self.height/8), fill='black', text='500', font=font)
 
     def drawStatusBar(self, canvas):
         self.drawButtons(canvas)
