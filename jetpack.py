@@ -19,18 +19,19 @@ def minDistance(pa, pb, px):
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
-    color = ['red3', 'red2', 'red']  # regular beam colors
-    if app.timeDilation == 3: color = ['forest green', 'lime green', 'green2',
-                                        'spring green']  # slowed time
-    widths = random.choice([[11, 10, 9], [10, 6, 4], [10, 9, 7],
-                            [10, 7, 5]])
-    scaleColor = [[3, 'black'], [10, color[2]]]
+    # if app.timeDilation == 3: color = ['forest green', 'lime green', 'green2',
+    #                                     'spring green']  # slowed time
+    color = 'red'
+    if app.timeDilation == 3: color ='spring green' # slowed time
+    width = random.choice([11, 5, 12, 8, 10, 6])
+    scaleColor = [[3, 'grey50'], [10, color]]
     if not app.invincible:
-        for i in range(3): canvas.create_line(x1, y1, x2, y2,
-                        fill=color[i], width=widths[i]*app.scale)
+        for i in range(1): canvas.create_line(x1, y1, x2, y2,
+                        fill=color, width=width*app.scale)
     for coords in [[x1, y1], [x2, y2]]:
-        for scale in scaleColor: canvas.create_oval(coords[0]-(app.cellSize/scale[0]),
-            coords[1]-(app.cellSize/scale[0]), coords[0]+(app.cellSize/scale[0]),
+        for scale in scaleColor: canvas.create_oval(coords[0]-(
+                app.cellSize/scale[0]),coords[1]-(app.cellSize/scale[0]),
+                coords[0]+(app.cellSize/scale[0]),
             coords[1]+(app.cellSize/scale[0]), fill=scale[1])
     if app.timeDilation == 3: canvas.create_image(x1+((x2-x1)/2),  # clock
                 y1+((y2-y1)/2), image=ImageTk.PhotoImage(app.clock))
@@ -54,8 +55,10 @@ def drawPowerUp(object, app, canvas):  # draws power ups of any type
                         image=ImageTk.PhotoImage(object.sprite))
     if object.active:
         timer = int(15-(time.time()-object.timeInitial))
+        if timer <= 5: color = 'red'
+        else: color = 'black'
         font = 'Times', str(int(24*app.scale)), 'bold italic'
-        canvas.create_text(object.x+app.barY, object.y, fill='black',
+        canvas.create_text(object.x+app.barY, object.y, fill=color,
                            text=timer, anchor='center', font=font)
 
 class Scotty():  # class for player
@@ -63,16 +66,17 @@ class Scotty():  # class for player
         self.x = app.width/4
         self.y = app.height-(100*app.scale)
         [self.sizeX, self.sizeY] = [35*app.scale, 46*app.scale]
-        [self.up, self.airborne] = [False, True]
+        [self.up, self.airborne, self.fireStart] = [False, True, False]
+        self.freezeFactor = 1
         self.images = images
         self.igniteImages = igniteImages
-        self.changeX = 0
+        [self.changeX, self.changeY] = [0, 0]
 
     def move(self, app, changeY):  # shakes when rising:
         if self.up: self.changeX = random.choice([-1, 0, 1])
         else: self.changeX = 0
         if app.barY+self.sizeY/2 < self.y+changeY < (app.height-(self.sizeY/2)):
-            self.y += changeY  # within bounds of game
+            self.y += changeY/self.freezeFactor  # within bounds of game
         elif self.y+changeY >= app.height-(self.sizeY/2):
             self.airborne = False  # now running on the ground
             self.y = app.height-(self.sizeY/2)-(5*app.scale)
@@ -80,24 +84,43 @@ class Scotty():  # class for player
         if self.y+(self.sizeY/2) > app.height:
             self.y = app.height-(self.sizeY/2)
 
+    def manage(self):
+        if self.freezeFactor != 1:
+            self.changeY = random.choice([-2, -1, 0, 1, 2])
+            if (int((time.time()-self.fireStart)*10))/10 > 0.5:
+                self.fireStart = time.time()
+        else: self.changeY = 0
+
     def draw(self, app, canvas, debug):
-        if self.airborne: key = -1
+        if (self.airborne or self.up): key = -1
         elif app.paused: key = 0
         else: key = int((time.time()*7*(app.speed/5))%3)  # ignite 1-15
         image = ImageTk.PhotoImage(self.images[key])
-        canvas.create_image(self.x+self.changeX, self.y, image=image)
+        if self.freezeFactor != 1: image = ImageTk.PhotoImage(self.images[-2])
+        canvas.create_image(self.x+self.changeX, self.y+self.changeY,
+                            image=image)
         if debug: printer.outlineScotty(self, canvas)
-        if app.invincible: canvas.create_image(self.x, self.y,
-                        image=ImageTk.PhotoImage(app.miniHeart))
+        if (app.invincible) and (self.freezeFactor == 1): canvas.create_image(
+            self.x, self.y, image=ImageTk.PhotoImage(app.miniHeart))
 
     def drawFire(self, app, canvas):
-        if self.up:  # rising
-            startCoords = [self.x-(12*app.scale), self.y+(self.sizeY/2)]
-            key = (int((time.time()-app.upInitial)*10))/10
-            if key > 1.8: key = random.choice([1.5, 1.6, 1.7, 1.8])
-            image = ImageTk.PhotoImage(self.igniteImages[key])
-            y = startCoords[1]+((self.igniteImages[key].size[1])/2)
-            canvas.create_image(startCoords[0]+self.changeX, y, image=image)
+        if self.up and (self.freezeFactor == 1): self.drawNormal(app, canvas)
+        elif self.freezeFactor != 1: self.drawBlue(app, canvas)
+
+    def drawNormal(self, app, canvas):
+        startCoords = [self.x-(12*app.scale), self.y+(self.sizeY/2)]
+        key = (int((time.time()-app.upInitial)*10))/10
+        if key > 1.8: key = random.choice([1.5, 1.6, 1.7, 1.8])
+        image = ImageTk.PhotoImage(self.igniteImages[key])
+        y = startCoords[1]+((self.igniteImages[key].size[1])/2)
+        canvas.create_image(startCoords[0]+self.changeX, y, image=image)
+
+    def drawBlue(self, app, canvas):
+        key = (int((time.time()-self.fireStart)*10))/10
+        if key > 0.5: key = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
+        image = ImageTk.PhotoImage(app.rightFire[key])
+        x = self.x-(self.images[-2].size[0]/2)-(app.rightFire[key].size[0]/2)
+        canvas.create_image(x, self.y-(12*app.scale)+self.changeY, image=image)
 
 class BackDrop():  # single sprite of Cohon University Center
     def __init__(self, app, index, x):
@@ -326,6 +349,40 @@ class Exclamation():  # exclamation point that appears before and makes missiles
         canvas.create_text(x, self.y, fill='red', text='!', anchor='center',
                            font=font)
 
+class Booster():  # rocket fuel power up
+    def __init__(self, app, x, y):
+        [self.x, self.y] = [app.width + x, y]
+        self.active = False  # waiting on the board
+        self.priorSpeed = app.speed
+        self.sprite = app.gas
+
+    def interacts(self, app, x, y):
+        if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
+            self.activate(app)
+
+    def activate(self, app):
+        [self.active, app.powerUp] = [True, True]
+        [self.x, self.y] = [app.width/5, app.barY/2]
+        self.timeInitial = time.time()
+        [app.invincible, app.missiles, app.lazyGeneration] = [True, [], True]
+        app.player.freezeFactor = 2
+
+    def manage(self, app):
+        if self.active:
+            timeSinceStart = time.time()-self.timeInitial
+            inflationScale = math.sin(math.pi*timeSinceStart/15)
+            app.speed = self.priorSpeed+(inflationScale*app.speed*4)
+        return managePowerUp(self, app)
+
+    def deactivate(self, app):
+        [app.invincible, app.powerUp] = [False, False]
+        app.lazyGeneration = False
+        app.speed = self.priorSpeed
+        app.player.freezeFactor = 1
+
+    def draw(self, app, canvas):
+        drawPowerUp(self, app, canvas)
+
 class Invincibility():  # heart power up
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
@@ -449,7 +506,7 @@ class MyApp(App):
         if self.width <= 400: self.buttonSizes = self.barY
         self.trueHeight = self.height-self.barY
         self.cellSize = self.width/self.cols
-        [self.dDrops, self.dCoins] = [False, True]
+        [self.dDrops, self.dCoins, self.lazyGeneration] = [False, True, False]
         [self.timerDelay, self.coinSize, self.coinSpacing] = \
             [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
@@ -458,8 +515,10 @@ class MyApp(App):
 
     def loadIndividualSprites(self):  # for distinct sprites
         self.scottyImages = {-1: self.loadImage('sprites/airborne.png')}
-        [self.coinSequence, self.igniteImages, self.buttons, self.missileFire] \
-            = [{}, {}, {}, {}]
+        self.scottyImages[-2] = \
+            self.scottyImages[-1].transpose(Image.ROTATE_270)
+        [self.coinSequence, self.igniteImages, self.buttons, self.missileFire,
+         self.rightFire] = [{}, {}, {}, {}, {}]
         self.buttons['pause'] = self.loadImage('sprites/pause.png')
         self.clockCircle = self.loadImage('sprites/clockCircle.png')
         self.clock = self.loadImage('sprites/clock.png')
@@ -471,26 +530,24 @@ class MyApp(App):
         self.buttons['settings'] = self.loadImage('sprites/settings.png')
         self.missile = self.loadImage('sprites/missile.png')
         self.missile = self.scaleImage(self.missile, 1.5)
+        self.gas = self.loadImage('sprites/gas.png')
 
     def loadSprites(self):  # for sets of similar sprites
         self.loadIndividualSprites()
-        self.coinCoordsRange = [
-            (self.width//(self.coinSize+self.coinSpacing)),
+        self.coinCoordsRange = [(self.width//(self.coinSize+self.coinSpacing)),
             (self.trueHeight//(self.coinSize+self.coinSpacing))]
-        for i in range(4):
-            image = self.loadImage('sprites/coin'+str(i)+'.png')
-            self.coinSequence[i] = self.scaleImage(image, self.scale)
+        for i in range(4): self.coinSequence[i] = self.scaleImage(
+            self.loadImage('sprites/coin'+str(i)+'.png'), self.scale)
         for i in range(2, -1, -1):
-            image = self.loadImage('sprites/coin'+str(i)+'.png')
-            image = self.scaleImage(image, self.scale)
+            image = self.scaleImage(self.loadImage('sprites/coin'+str(i)+
+                                                   '.png'), self.scale)
             self.coinSequence[6-i] = image.transpose(Image.FLIP_LEFT_RIGHT)
         for i in range(3): self.scottyImages[i] = \
             self.loadImage('sprites/scotty'+str(i)+'.png')
-        for imageKey in self.scottyImages:
-            self.scottyImages[imageKey] = \
+        for imageKey in self.scottyImages: self.scottyImages[imageKey] = \
                 self.scaleImage(self.scottyImages[imageKey], self.scale)
-        dropImage = self.loadImage('sprites/cohon0.tiff')
-        dropImage = self.scaleImage(dropImage, 2*self.scale)
+        dropImage = self.scaleImage(self.loadImage('sprites/cohon0.tiff'),
+                                    2*self.scale)
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
@@ -504,13 +561,15 @@ class MyApp(App):
             self.loadImage('sprites/blue'+str(i)+'.png'), 1.5*self.scale)
         for i in range(3, 6): self.missileFire[i/10] = self.missileFire[
             (i-3)/10].transpose(Image.FLIP_TOP_BOTTOM)
+        for i in range(6): self.rightFire[i/10] = self.missileFire[i/10].\
+            transpose(Image.FLIP_LEFT_RIGHT)
         for button in self.buttons:
             scale = self.buttonSizes/self.buttons[button].size[0]
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
 
     def restartApp(self):
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
-        [self.currentRun] = [0]
+        [self.currentRun, self.lazeGeneration] = [0, False]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
@@ -519,13 +578,13 @@ class MyApp(App):
         [self.downInitial, self.upInitial, self.timeSincePaused,
          self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
                               time.time()+1]
-        [self.timeDilation] = [1]
+        [self.timeDilation, self.invincible] = [1, False]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
          self.warnings, self.powerUps] = [[], [], [], [], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
         self.currentChunk = Chunk(self, False, 0)
-        self.firstChunk = False
+        [self.firstChunk, self.explosionX] = [False, False]
         self.newChunk = Chunk(self, False, self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
         for i in range((self.width//self.dropSize[0])+2):
@@ -546,6 +605,11 @@ class MyApp(App):
             image.cachedPhotoImage = ImageTk.PhotoImage(image)
         return image.cachedPhotoImage
 
+    def explosionSetUp(self, missile):
+        [self.explosionX, self.explosionY] = [missile.x, missile.y]
+        self.maxRadius = [self.trueHeight, self.trueHeight/2, self.trueHeight/3]
+        self.TOD = time.time()
+
     def killAll(self):  # puts game in gameOver state but does not reset
         [self.gameOver, self.paused] = [True, True]
         self.staticTime = time.time()+0
@@ -562,6 +626,7 @@ class MyApp(App):
         self.powerUps += [Invincibility(self, self.player.x-self.width,
                     self.player.y)]  # player has temporary invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
+        [self.explosionX, self.explosionY] = [False, False]
 
     def manageAll(self):  # deletes and adds objects based on locations
         [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
@@ -580,8 +645,10 @@ class MyApp(App):
             if not warning.createMissile(self): newWarnings += [warning]
         for missile in self.missiles:
             if (not self.invincible) and (missile.interacts(self, self.player.x,
-                self.player.y)): kill = True
-            if missile.x+(self.missile.size[0]/2)+self.missileFire[0].size[0] \
+                self.player.y)):
+                self.explosionSetUp(missile)
+                kill = True
+            elif missile.x+(self.missile.size[0]/2)+self.missileFire[0].size[0]\
                     > 0: newMissiles += [missile]
         for power in self.powerUps:
             if self.powerUp:
@@ -598,6 +665,7 @@ class MyApp(App):
         self.checkCoinInteraction()
 
     def moveAll(self):  # moves all objects at various speeds
+        self.player.manage()
         self.currentRun += self.speed
         self.newChunk.x -= self.speed
         self.currentChunk.x -= self.speed
@@ -626,8 +694,8 @@ class MyApp(App):
                 event.y <= (self.height/10)+box[3]): self.respawn()
         if ((self.barY-self.buttonSizes)/2) <= event.y <= self.barY-\
                 ((self.barY-self.buttonSizes)/2):  # check for button click
-            if self.width-self.buttonSpacing-self.buttonSizes <= event.x <= \
-                    self.width-self.buttonSpacing:
+            if (self.width-self.buttonSpacing-self.buttonSizes <= event.x <=
+                self.width-self.buttonSpacing) and (not self.gameOver):
                 self.paused = not self.paused
                 if self.paused: self.staticTime = time.time()+0
                 else:
@@ -636,8 +704,9 @@ class MyApp(App):
             if self.width-(2*(self.buttonSpacing+self.buttonSizes)) <= event.x \
                     <= self.width-(2*self.buttonSpacing)-self.buttonSizes:
                 self.restartApp()
-            if self.width-(3*(self.buttonSpacing+self.buttonSizes)) <= event.x \
-                    <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes):
+            if (self.width-(3*(self.buttonSpacing+self.buttonSizes)) <= event.x
+                    <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes)) \
+                    and (not self.gameOver):
                 self.settingsOpen = not self.settingsOpen
                 self.paused = not self.paused
                 if self.paused: self.staticTime = time.time()+0
@@ -662,8 +731,10 @@ class MyApp(App):
         elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
         elif (event.key.lower() == 'left') and (self.difficultyBase-
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
-        elif event.key.lower() == 'i': self.invincible = not self.invincible
-        elif event.key.lower() == 'c': printer.printer(self)
+        elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
+                        self.player.x-self.width, self.player.y)]
+        elif event.key.lower() == 'p': printer.printer(self)
+        elif event.key.lower() == 'c': self.points += 500
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
@@ -683,8 +754,20 @@ class MyApp(App):
         for exclamation in self.warnings: exclamation.draw(self, canvas)
         for missile in self.missiles: missile.draw(self, canvas)
         for powerUp in self.powerUps: powerUp.draw(self, canvas)
+        if self.gameOver:
+            if self.explosionX: self.drawExplosion(canvas)
+            self.drawGameOver(canvas)
         self.drawStatusBar(canvas)
-        if self.gameOver: self.drawGameOver(canvas)
+
+    def drawExplosion(self, canvas):
+        totalTime = 0.1
+        if time.time()-self.TOD <= totalTime:
+            colors = ['white', 'orange', 'red']
+            for i in range(3):
+                radius = (self.maxRadius[i]*(time.time()-self.TOD))/totalTime
+                canvas.create_oval(self.explosionX-radius,
+                    self.explosionY-radius, self.explosionX+radius,
+                    self.explosionY+radius, fill=colors[i], width=0)
 
     def drawGameOver(self, canvas):  # game over screen
         box1 = [self.killX-self.killXSize, self.killY-self.killYSize,
@@ -714,9 +797,10 @@ class MyApp(App):
             self.height/8), fill='black', text='500', font=font)
 
     def drawStatusBar(self, canvas):  # top bar with statuses and buttons
-        self.drawButtons(canvas)
         self.drawUpperCoin(canvas)
+        self.drawButtons(canvas)
         self.drawCurrentRun(canvas)
+        if self.settingsOpen: self.drawSettings(canvas)
 
     def drawUpperCoin(self, canvas):  # coin number in upper left
         xPosition = (3*self.buttonSpacing)+self.buttonSizes
@@ -731,10 +815,10 @@ class MyApp(App):
         fontSize = 24*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
         if self.currentRun >= self.longestRun:
-            text = 'High Score! '+str(self.currentRun//100)+'m'
+            text = 'High Score! '+str(int(self.currentRun//100))+'m'
             colors = ['darkgrey', 'gold']
         else:
-            text = 'Current Run '+str(self.currentRun//100)+'m'
+            text = 'Current Run '+str(int(self.currentRun//100))+'m'
             colors = ['lightgrey', 'black']
         canvas.create_rectangle(xPosition-4*self.buttonSizes,
             self.buttonSpacing, xPosition+4*self.buttonSizes,
@@ -747,17 +831,25 @@ class MyApp(App):
         pausedX = self.width-self.buttonSpacing-(self.buttonSizes//2)
         restartX = self.width-(2*self.buttonSpacing)-((3*self.buttonSizes)//2)
         settingsX = self.width-(3*self.buttonSpacing)-((5*self.buttonSizes)//2)
-        if self.paused: image = ImageTk.PhotoImage(self.buttons['play'])
+        if self.paused and (not self.gameOver):
+            image = ImageTk.PhotoImage(self.buttons['play'])
         else: image = ImageTk.PhotoImage(self.buttons['pause'])
-        canvas.create_image(pausedX, y, image=image)
+        if not self.gameOver: canvas.create_image(pausedX, y, image=image)
         if self.settingsOpen: image = ImageTk.PhotoImage(self.buttons['exit'])
         else: image = ImageTk.PhotoImage(self.buttons['settings'])
-        canvas.create_image(settingsX, y, image=image)
+        if not self.gameOver: canvas.create_image(settingsX, y, image=image)
         image = ImageTk.PhotoImage(self.buttons['reset'])
         canvas.create_image(restartX, y, image=image)
 
+    def drawSettings(self, canvas):
+        canvas.create_rectangle(self.width-(self.width/4), self.barY,
+                self.width, self.barY+(self.trueHeight/2), fill='darkgrey')
+        canvas.create_line(self.width-(self.width/4),
+            self.barY+(self.trueHeight/4), self.width,
+            self.barY+(self.trueHeight/4))
+
     def drawSky(self, canvas):
-        canvas.create_rectangle(0, self.barY, self.width, self.height,
+        canvas.create_rectangle(0, 0, self.width, self.height,
                                 fill='#34c0eb')
         for cloud in self.clouds: cloud.draw(canvas)
 

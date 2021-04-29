@@ -37,6 +37,7 @@ class MiniChunk():  # small 2D list of a certain object
         return chunk
 
 def conversionWrapper(app, chunk):  # converts chunk values into booleans
+    if app.lazyGeneration: return True
     testChunk = []
     for r in range(len(chunk)):
         row = []
@@ -88,8 +89,8 @@ def missileGenerator(app, difficulty, byPass):  # spawns missiles
     if not byPass:  # makes a distribution for random selection
         missileProbability = ((3*difficulty)/800)+(1/8)
         perfectDistribution = []
-        for i in range(int(missileProbability*50)): perfectDistribution += [1]
-        for i in range(100-int(missileProbability*50)):
+        for i in range(int(missileProbability*10)): perfectDistribution += [1]
+        for i in range(10-int(missileProbability*10)):
             perfectDistribution += [0]
     if byPass or (random.choice(perfectDistribution) == 1):
         missileSize = app.missile.size[1]/2
@@ -107,21 +108,15 @@ def getNewRowCol(chunk):  # helper for powerUpGenerator that chooses row and col
             return [row, col]
 
 def powerUpGenerator(app, chunk):  # spawns power ups on top of chunks
-    powerUpProbability = 0.5
-    perfectDistribution = []
-    for i in range(int(powerUpProbability*50)): perfectDistribution += \
-        random.choice([[1], [2], [3]])
-    for i in range(100-int(powerUpProbability*50)):
-        perfectDistribution += [0]
-    choice = random.choice(perfectDistribution)
+    choice = random.choice([1, 1, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0])
     if choice != 0: [row, col] = getNewRowCol(chunk)
     if choice == 1: app.powerUps += [jetpack.TimeSlower(app, (col*app.cellSize)+
         (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
     elif choice == 2: app.powerUps += [jetpack.Invincibility(app, (col*
         app.cellSize)+(app.cellSize/2), app.barY+(row*app.cellSize)+
                                                 (app.cellSize/2))]
-    elif choice == 3:  # power up 3
-        pass
+    elif choice == 3: app.powerUps += [jetpack.Booster(app, (col*app.cellSize)+
+        (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
 
 # gets upperBeamRange from curves of time and difficulty value
 def difficultyWrapper(app, chunk, x):
@@ -131,6 +126,7 @@ def difficultyWrapper(app, chunk, x):
     difficulty = app.difficultyBase+(curve['a']*((time.time()-
                             app.timeInitial)/60))+curve['b']
     app.speed = app.scale*(2+((difficulty*1)/10))/app.timeDilation
+    if app.lazyGeneration: upperBeamRange = 3
     upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
