@@ -84,8 +84,8 @@ def coinGenerator(app, chunk, x):
         chunk = coinChunk.place(chunk, 'c')
     return chunk
 
-def missileGenerator(app, difficulty, byPass):
-    if not byPass:
+def missileGenerator(app, difficulty, byPass):  # spawns missiles
+    if not byPass:  # makes a distribution for random selection
         missileProbability = ((3*difficulty)/800)+(1/8)
         perfectDistribution = []
         for i in range(int(missileProbability*50)): perfectDistribution += [1]
@@ -98,7 +98,7 @@ def missileGenerator(app, difficulty, byPass):
         waitTime = ((3*difficulty)/100)+1
         app.warnings += [jetpack.Exclamation(app, y, waitTime)]
 
-def getNewRowCol(chunk):
+def getNewRowCol(chunk):  # helper for powerUpGenerator that chooses row and col
     while True:
         [row, col] = [random.randint(1, len(chunk)-2),
                       random.randint(0, len(chunk[0])-1)]
@@ -106,7 +106,7 @@ def getNewRowCol(chunk):
             chunk[row][col] = 'c'
             return [row, col]
 
-def powerUpGenerator(app, chunk):
+def powerUpGenerator(app, chunk):  # spawns power ups on top of chunks
     powerUpProbability = 0.5
     perfectDistribution = []
     for i in range(int(powerUpProbability*50)): perfectDistribution += \
@@ -137,8 +137,7 @@ def difficultyWrapper(app, chunk, x):
     if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
-# makes blank 2D list to be called
-def generationManager(app, x):
+def generationManager(app, x): # makes blank 2D list to be called
     bareChunk = []
     for r in range(app.rows):
         row = ['' for col in range(app.cols)]

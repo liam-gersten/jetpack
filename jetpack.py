@@ -6,6 +6,7 @@ import math, time, random, copy
 
 def almostEqual(d1, d2, epsilon=10**-7): return (abs(d2-d1) < epsilon)
 
+# vector calculus for mid distance between point and line
 def minDistance(pa, pb, px):
     abVector = [pb[0]-pa[0], pb[1]-pa[1]]
     beVector = [px[0]-pb[0], px[1]-pb[1]]
@@ -17,31 +18,24 @@ def minDistance(pa, pb, px):
     else: return abs(((abVector[0])*(axVector[1]))-((abVector[1])*
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
-def drawBeam(app, canvas, x1, y1, x2, y2):
-    color = ['red4', 'red3', 'red2', 'red']
+def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
+    color = ['red3', 'red2', 'red']  # regular beam colors
     if app.timeDilation == 3: color = ['forest green', 'lime green', 'green2',
-                                        'spring green']
-    widths = random.choice([[11, 10, 9, 6], [10, 6, 4, 2], [10, 9, 7, 5],
-                            [10, 7, 5, 3]])
+                                        'spring green']  # slowed time
+    widths = random.choice([[11, 10, 9], [10, 6, 4], [10, 9, 7],
+                            [10, 7, 5]])
+    scaleColor = [[3, 'black'], [10, color[2]]]
     if not app.invincible:
-        for i in range(4): canvas.create_line(x1, y1, x2, y2,
+        for i in range(3): canvas.create_line(x1, y1, x2, y2,
                         fill=color[i], width=widths[i]*app.scale)
-    canvas.create_oval(x1-(app.cellSize/3), y1-(app.cellSize/3),
-            x1+(app.cellSize/3), y1+(app.cellSize/3), fill='black')
-    canvas.create_oval(x2-(app.cellSize/3), y2-(app.cellSize/3),
-            x2+(app.cellSize/3), y2+(app.cellSize/3), fill='black')
-    canvas.create_oval(x1-(app.cellSize/4), y1-(app.cellSize/4),
-            x1+(app.cellSize/4), y1+(app.cellSize/4), fill='darkgrey')
-    canvas.create_oval(x2-(app.cellSize/4), y2-(app.cellSize/4),
-            x2+(app.cellSize/4), y2+(app.cellSize/4), fill='darkgrey')
-    canvas.create_oval(x1-(app.cellSize/10), y1-(app.cellSize/10),
-            x1+(app.cellSize/10), y1+(app.cellSize/10), fill=color[3])
-    canvas.create_oval(x2-(app.cellSize/10), y2-(app.cellSize/10),
-            x2+(app.cellSize/10), y2+(app.cellSize/10), fill=color[3])
-    if app.timeDilation == 3: canvas.create_image(x1+((x2-x1)/2),
+    for coords in [[x1, y1], [x2, y2]]:
+        for scale in scaleColor: canvas.create_oval(coords[0]-(app.cellSize/scale[0]),
+            coords[1]-(app.cellSize/scale[0]), coords[0]+(app.cellSize/scale[0]),
+            coords[1]+(app.cellSize/scale[0]), fill=scale[1])
+    if app.timeDilation == 3: canvas.create_image(x1+((x2-x1)/2),  # clock
                 y1+((y2-y1)/2), image=ImageTk.PhotoImage(app.clock))
 
-def managePowerUp(object, app):
+def managePowerUp(object, app):  # manages power ups of any type
     if (not object.active) and (object.x+object.sprite.size[0] < 0):return False
     elif not object.active:
         object.x -= app.speed
@@ -52,7 +46,8 @@ def managePowerUp(object, app):
         return True
     return False
 
-def drawPowerUp(object, app, canvas):
+def drawPowerUp(object, app, canvas):  # draws power ups of any type
+    # floats up and down
     if not object.active: yChange = 5*math.sin(5*time.time())*app.scale
     else: yChange = 0
     canvas.create_image(object.x, object.y+yChange,
@@ -73,7 +68,7 @@ class Scotty():  # class for player
         self.igniteImages = igniteImages
         self.changeX = 0
 
-    def move(self, app, changeY):
+    def move(self, app, changeY):  # shakes when rising:
         if self.up: self.changeX = random.choice([-1, 0, 1])
         else: self.changeX = 0
         if app.barY+self.sizeY/2 < self.y+changeY < (app.height-(self.sizeY/2)):
@@ -141,7 +136,7 @@ class Coin():  # spinning coin object
         if (app.staticTime) and (not self.special): coinId = 1
         else: coinId = int((time.time()*10)%7)  # ranges 0 - 6
         if not self.special: image = app.getCachedPhotoImage(sequence[coinId])
-        else:
+        else:  # coin is in the top left of the menu bar
             if app.coinStart:
                 sizeScale = \
             self.standardSize*(1+math.sin(math.pi*(time.time()-app.coinStart)))
@@ -223,7 +218,7 @@ class horizontalBeam():  # moves horizontally
     def interacts(self, app, player):
         if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*(((
                     app.staticTime-app.timeSincePaused)/app.timeDilation)%1))
-        else: xPosition = self.xScale*math.cos(2*math.pi*
+        else: xPosition = self.xScale*math.cos(2*math.pi* # animation curve
                     (((time.time()-app.timeSincePaused)/app.timeDilation)%1))
         pa = [self.centerX+xPosition, self.centerY-self.yScale]
         pb = [self.centerX+xPosition, self.centerY+self.yScale]
@@ -250,7 +245,7 @@ class rotatingBeam():  # rotate left or right
 
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
-    def interacts(self, app, player):
+    def interacts(self, app, player): # animation curve below
         if app.staticTime: timeStamp = 2*(((app.staticTime-app.timeSincePaused)
                                            /app.timeDilation)%1)
         else: timeStamp = 2*(((time.time()-app.timeSincePaused)/
@@ -276,16 +271,16 @@ class rotatingBeam():  # rotate left or right
 
 class Missile():
     def __init__(self, app, y):
-        self.fireStart = time.time()
-        self.x = app.width+(app.missile.size[0]/2)
+        self.fireStart = time.time()  # time since ignition
+        self.x = app.width+(app.missile.size[0]/2)  # in next chunk
         self.y = y
 
     def move(self, app):
         if (int((time.time()-self.fireStart)*10))/10 > 0.5:
             self.fireStart = time.time()
-        self.x -= app.missileMultiplier*app.speed
+        self.x -= app.missileMultiplier*app.speed  # slightly faster
 
-    def interacts(self, app, x, y):
+    def interacts(self, app, x, y):  # hit box consists of two meeting lines
         [ax1, bx1] = [self.x-(app.missile.size[0]/2),
                       self.x-(app.missile.size[0]/2)]
         [ax2, bx2] = [self.x+(app.missile.size[0]/3),
@@ -298,7 +293,7 @@ class Missile():
                 [x, y]) <= (app.player.sizeX/2))
 
     def draw(self, app, canvas):
-        shakeY = random.choice([-2, -1, 0, 1, 2])
+        shakeY = random.choice([-2, -1, 0, 1, 2])  # shakes up and down
         canvas.create_image(self.x, self.y+shakeY,
                             image=ImageTk.PhotoImage(app.missile))
         self.drawFire(app, canvas, shakeY)
@@ -312,10 +307,10 @@ class Missile():
         x = self.x+(app.missile.size[0]/2)+(app.missileFire[key].size[0]/2)
         canvas.create_image(x, self.y+shakeY, image=image)
 
-class Exclamation():
+class Exclamation():  # exclamation point that appears before and makes missiles
     def __init__(self, app, y, waitTime):
         self.y = y
-        self.waitTime = waitTime
+        self.waitTime = waitTime  # depends on difficulty
         self.startMissileWait = time.time()
 
     def createMissile(self, app):
@@ -331,10 +326,10 @@ class Exclamation():
         canvas.create_text(x, self.y, fill='red', text='!', anchor='center',
                            font=font)
 
-class Invincibility():
+class Invincibility():  # heart power up
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
-        self.active = False
+        self.active = False  # waiting on the board
         self.sprite = app.heart
 
     def interacts(self, app, x, y):
@@ -346,7 +341,7 @@ class Invincibility():
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
         app.invincible = True
-        app.timeDilation = 1/2
+        app.timeDilation = 1/2  # speed is doubled
         app.speed = app.speed/app.timeDilation
         app.missiles = []
 
@@ -355,13 +350,13 @@ class Invincibility():
 
     def deactivate(self, app):
         [app.invincible, app.powerUp] = [False, False]
-        app.speed = app.speed*app.timeDilation
+        app.speed = app.speed*app.timeDilation  # speed reset
         app.timeDilation = 1
 
     def draw(self, app, canvas):
         drawPowerUp(self, app, canvas)
 
-class TimeSlower():
+class TimeSlower():  # power up that slows down time
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
         self.active = False
@@ -375,7 +370,7 @@ class TimeSlower():
         [self.active, app.powerUp] = [True, True]
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
-        app.timeDilation = 3
+        app.timeDilation = 3  # three times as slow
         app.speed = app.speed/app.timeDilation
 
     def manage(self, app):
@@ -383,7 +378,7 @@ class TimeSlower():
 
     def deactivate(self, app):
         app.powerUp = False
-        app.speed = app.speed*app.timeDilation
+        app.speed = app.speed*app.timeDilation  # resets speed
         app.timeDilation = 1
 
     def draw(self, app, canvas):
@@ -461,7 +456,7 @@ class MyApp(App):
         self.missileMultiplier = 2.5
         self.restartApp()
 
-    def loadIndividualSprites(self):
+    def loadIndividualSprites(self):  # for distinct sprites
         self.scottyImages = {-1: self.loadImage('sprites/airborne.png')}
         [self.coinSequence, self.igniteImages, self.buttons, self.missileFire] \
             = [{}, {}, {}, {}]
@@ -477,7 +472,7 @@ class MyApp(App):
         self.missile = self.loadImage('sprites/missile.png')
         self.missile = self.scaleImage(self.missile, 1.5)
 
-    def loadSprites(self):  # called only once
+    def loadSprites(self):  # for sets of similar sprites
         self.loadIndividualSprites()
         self.coinCoordsRange = [
             (self.width//(self.coinSize+self.coinSpacing)),
@@ -514,7 +509,6 @@ class MyApp(App):
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
 
     def restartApp(self):
-        # printer.tp1ReadMe()
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
         [self.currentRun] = [0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
@@ -552,7 +546,7 @@ class MyApp(App):
             image.cachedPhotoImage = ImageTk.PhotoImage(image)
         return image.cachedPhotoImage
 
-    def killAll(self):
+    def killAll(self):  # puts game in gameOver state but does not reset
         [self.gameOver, self.paused] = [True, True]
         self.staticTime = time.time()+0
         [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
@@ -566,7 +560,8 @@ class MyApp(App):
         [self.gameOver, self.paused] = [False, False]
         self.points -= 500
         self.powerUps += [Invincibility(self, self.player.x-self.width,
-                                        self.player.y)]
+                    self.player.y)]  # player has temporary invincibility
+        self.timeDilation = 1  # counters increased speed of invincibility
 
     def manageAll(self):  # deletes and adds objects based on locations
         [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
@@ -615,7 +610,7 @@ class MyApp(App):
 
     def timerFired(self):
         if self.gameOver and (self.killY > (self.trueHeight/2)+self.barY):
-            self.killY -= 5*self.scale
+            self.killY -= 10*self.scale  # moves game over screen
         self.specialCoin.changeTimeState(self)
         if not self.paused: self.moveAll()
         if self.player.up: self.player.move(self,
@@ -624,13 +619,13 @@ class MyApp(App):
                     (self.scale*10*math.log(time.time()-self.downInitial+1)))
 
     def mousePressed(self, event):
-        if (self.points >= 500) and (self.gameOver):
+        if (self.points >= 500) and (self.gameOver):  # check for respawn click
             box = [self.killX-self.respawnSizeX, self.killY-self.respawnSizeY,
                     self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
             if (box[0] <= event.x <= box[2]) and ((self.height/10)+box[1] <=
                 event.y <= (self.height/10)+box[3]): self.respawn()
         if ((self.barY-self.buttonSizes)/2) <= event.y <= self.barY-\
-                ((self.barY-self.buttonSizes)/2):
+                ((self.barY-self.buttonSizes)/2):  # check for button click
             if self.width-self.buttonSpacing-self.buttonSizes <= event.x <= \
                     self.width-self.buttonSpacing:
                 self.paused = not self.paused
@@ -670,7 +665,7 @@ class MyApp(App):
         elif event.key.lower() == 'i': self.invincible = not self.invincible
         elif event.key.lower() == 'c': printer.printer(self)
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
-                                                            50, True)
+                50, True)  # instantly generates a missile
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
 
     def redrawAll(self, canvas):
@@ -691,7 +686,7 @@ class MyApp(App):
         self.drawStatusBar(canvas)
         if self.gameOver: self.drawGameOver(canvas)
 
-    def drawGameOver(self, canvas):
+    def drawGameOver(self, canvas):  # game over screen
         box1 = [self.killX-self.killXSize, self.killY-self.killYSize,
                 self.killX+self.killXSize, self.killY+self.killYSize]
         box2 = [self.killX-self.miniXSize, self.killY-self.miniYSize,
@@ -718,12 +713,12 @@ class MyApp(App):
         canvas.create_text(self.killX+(15*self.scale), self.killY+(
             self.height/8), fill='black', text='500', font=font)
 
-    def drawStatusBar(self, canvas):
+    def drawStatusBar(self, canvas):  # top bar with statuses and buttons
         self.drawButtons(canvas)
         self.drawUpperCoin(canvas)
         self.drawCurrentRun(canvas)
 
-    def drawUpperCoin(self, canvas):
+    def drawUpperCoin(self, canvas):  # coin number in upper left
         xPosition = (3*self.buttonSpacing)+self.buttonSizes
         font = 'Times', str(int(24*self.scale)), 'bold italic'
         canvas.create_text(xPosition, self.barY/2, activefill='gold',
@@ -731,7 +726,7 @@ class MyApp(App):
         self.specialCoin.draw(self, canvas, self.debug, self.coinSequence,
                               self.coinSize)
 
-    def drawCurrentRun(self, canvas):
+    def drawCurrentRun(self, canvas):  # current run/high score with distance
         xPosition = self.width/2
         fontSize = 24*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
@@ -747,7 +742,7 @@ class MyApp(App):
         canvas.create_text(xPosition, self.barY/2, activefill='gold',
                     fill=colors[1], text=text, anchor='center', font=font)
 
-    def drawButtons(self, canvas):
+    def drawButtons(self, canvas):  # three buttons with changing sprites
         y = self.barY//2
         pausedX = self.width-self.buttonSpacing-(self.buttonSizes//2)
         restartX = self.width-(2*self.buttonSpacing)-((3*self.buttonSizes)//2)

@@ -63,6 +63,10 @@ def memorizeHP(searcher): # cache helper for nonGuidedHalfPoint
 def nonGuidedHalfPoint(app, chunk, row, col):
     pass
 
+########
+# Below is testing code which should not count towards the final product
+########
+
 def displayResults(outerV1, outerV2, v1Pairs, v2Pairs):
     printer.histogram(outerV1, outerV2, 'blue')
     for listColor in [[v1Pairs, 'blue'], [v2Pairs, 'red']]:
