@@ -136,7 +136,7 @@ def mergeSingleDistribution(difficulty, distribution, type):
     totalPossible = 0
     if type == 'missile': biasWeight = (3/4)+(difficulty/100)
     else: biasWeight = (3/4)+difficulty/200
-    # biasWeight = 1
+    biasWeight = 1
     newProportions = {}
     originalWeight = (1-biasWeight)*100
     biasWeight *= 100
@@ -269,7 +269,7 @@ def difficultyWrapper(app, chunk, x):
     else: upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x, difficulty)
-    if not app.powerUp: powerUpGenerator(app, chunk)
+    # if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
 def generationManager(app, x): # makes blank 2D list to be called
