@@ -4,9 +4,33 @@ import chunkGeneration
 from PIL import Image
 import math, time, random, copy
 
+######
+# To do for MVP:  (all stored in chunkGeneration)
+# - quadrant from coords
+# - missile avoids quadrants
+# - missile death quadrants
+# - beam death quadrants
+# - beam death types
+# - number to probability
+# - bias curve
+# - implement bias curve
+# - implement to missile generation
+# - implement to beam generation
+######
+
+######
+# Known Bugs:
+# - Non-static Beams move on some deaths
+# - Timers continue during death and pause
+# - Coins freeze after first death
+# - Beam locations change after slowed time
+# - Size doesn't work well
+# - Rare negative height error
+######
+
 def almostEqual(d1, d2, epsilon=10**-7): return (abs(d2-d1) < epsilon)
 
-# vector calculus for mid distance between point and line
+# vector calculus for min distance between point and line
 def minDistance(pa, pb, px):
     abVector = [pb[0]-pa[0], pb[1]-pa[1]]
     beVector = [px[0]-pb[0], px[1]-pb[1]]
@@ -762,23 +786,23 @@ class MyApp(App):
                 self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
         fontSize = 50*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
-        canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3],
-                                fill='darkgrey')
-        canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
-        canvas.create_text(self.killX, self.killY-(self.killYSize/5),
-            fill='red', text='Game Over!', anchor='center', font=font)
+        # canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3],
+        #                         fill='darkgrey')
+        # canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
+        # canvas.create_text(self.killX, self.killY-(self.killYSize/5),
+        #     fill='red', text='Game Over!', anchor='center', font=font)
         if self.points < 100: box = 'red'
         else: box = 'green'
-        canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
-                            (self.height/10)+box3[3], fill=box)
+        # canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
+        #                     (self.height/10)+box3[3], fill=box)
         fontSize = 24*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
         canvas.create_text(self.killX, self.killY+(self.height/15),
                 fill='black', text='Respawn?', font=font)
-        canvas.create_image(self.killX-(20*self.scale), self.killY+(
-            self.height/8), image=ImageTk.PhotoImage(self.coinSequence[0]))
-        canvas.create_text(self.killX+(15*self.scale), self.killY+(
-            self.height/8), fill='black', text='100', font=font)
+        # canvas.create_image(self.killX-(20*self.scale), self.killY+(
+        #     self.height/8), image=ImageTk.PhotoImage(self.coinSequence[0]))
+        # canvas.create_text(self.killX+(15*self.scale), self.killY+(
+        #     self.height/8), fill='black', text='100', font=font)
 
     def drawStatusBar(self, canvas):  # top bar with statuses and buttons
         self.drawUpperCoin(canvas)
