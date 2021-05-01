@@ -6,14 +6,6 @@ import math, time, random, copy
 
 ######
 # To do for MVP:  (all stored in chunkGeneration)
-# - (DONE) quadrant from coords
-# - (DONE) missile avoids quadrants
-# - (DONE) missile death quadrants
-# - (DONE) beam death quadrants
-# - (DONE) beam death types
-# - (DONE) number to probability
-# - bias curves
-# - implement bias curve
 # - implement to missile generation
 # - implement to beam generation
 ######
@@ -589,8 +581,8 @@ class MyApp(App):
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
         [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
         [self.downInitial, self.upInitial, self.timeSincePaused,
-         self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
-                              time.time()+1]
+         self.timeInitial, self.balance] = [time.time()-1, time.time()-1,
+            time.time()-1, time.time()+1, time.time()]
         [self.timeDilation, self.invincible] = [1, False]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
@@ -643,6 +635,7 @@ class MyApp(App):
         [self.explosionX, self.explosionY] = [False, False]
 
     def manageAll(self):  # deletes and adds objects based on locations
+        if time.time()-self.balance >= 120: chunkGeneration.biasDicts(self)
         [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
                     [], False, [], [], []]
         if self.newChunk.x <= 0:

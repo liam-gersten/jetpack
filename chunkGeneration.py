@@ -49,6 +49,14 @@ def getQuadrantFromY(app, y):
     if y <= (app.barY+((3*app.trueHeight)/4)): return 2
     return 3
 
+def getYRangeFromQuadrant(app, quadrant):
+    if quadrant == 0: return [app.barY, app.barY+(app.trueHeight//4)]
+    if quadrant == 1: return [app.barY+(app.trueHeight//4),
+                              app.barY+(app.trueHeight//2)]
+    if quadrant == 2: return [app.barY+(app.trueHeight//2),
+                              app.barY+((3*app.trueHeight)//4)]
+    return [app.barY+((3*app.trueHeight)//4), app.height]
+
 # gets auto sequence of searches to make for one of 4 quadrants
 def getMovesByQuadrant(app, row):
     if row <= app.rows//2:
@@ -108,7 +116,9 @@ def mergeDoubleDistributions(difficulty, dist1, dist2):
     newProportions = {}
     for key in dist1:
         [p1, p2] = [dist1[key], dist2[key]]
-        newProportions[key] = ((deathWeight*p1)+(avoidanceWeight*p2))/100
+        value = ((deathWeight*p1)-(avoidanceWeight*p2))/100
+        if (value < 0) and (p1 != 0): value = (1-p2)
+        newProportions[key] = abs(value)
     return newProportions
 
 def mergeSingleDistribution(difficulty, distribution, type):
@@ -120,19 +130,20 @@ def mergeSingleDistribution(difficulty, distribution, type):
     biasWeight *= 100
     for key in distribution: totalPossible += distribution[key]
     for key in distribution:
-        p1 = distribution[key]/totalPossible
+        if totalPossible == 0: p1 = 0
+        else: p1 = distribution[key]/totalPossible
         p2 = 0.25
         newProportions[key] = ((biasWeight*p1)+(originalWeight*p2))/100
     return newProportions
 
-def createDistribution(app, difficulty, type):
+def createDistribution(probabilities):
     [distribution, distributionSize] = [[], 30]
-    probabilities = mergeSingleDistribution(difficulty, app.beamDeathTypes,
-                                            type)
     for key in probabilities:
         number = int(probabilities[key]*distributionSize)
         for i in range(number):
             distribution += [key]
+    if distribution == []:
+        for key in probabilities: distribution += [key]
     return distribution
 
 # places beams onto a test chunk and before testing with pathfinder
@@ -182,8 +193,21 @@ def missileGenerator(app, difficulty, byPass):  # spawns missiles
             perfectDistribution += [0]
     if byPass or (random.choice(perfectDistribution) == 1):
         missileSize = app.missile.size[1]/2
-        y = random.randrange(int(app.barY+missileSize),
-                             int(app.height-missileSize))
+        avoidanceProbabilities = mergeSingleDistribution(difficulty,
+                                        app.missileAvoids, 'missile')
+        deathProbabilities = mergeSingleDistribution(difficulty,
+                                        app.missileDeaths, 'missile')
+        print(avoidanceProbabilities)
+        print(deathProbabilities)
+        combinedProbabilities = mergeDoubleDistributions(difficulty,
+                                deathProbabilities, avoidanceProbabilities)
+        print(combinedProbabilities)
+        print('\n')
+        fullDistribution = createDistribution(combinedProbabilities)
+        quadrant = random.choice(fullDistribution)
+        spawnRange = getYRangeFromQuadrant(app, quadrant)
+        y = random.randrange(int(spawnRange[0]+missileSize),
+                             int(spawnRange[1]-missileSize))
         waitTime = ((3*difficulty)/100)+1
         app.warnings += [jetpack.Exclamation(app, y, waitTime)]
 
@@ -206,13 +230,17 @@ def powerUpGenerator(app, chunk):  # spawns power ups on top of chunks
     elif choice == 3: app.powerUps += [jetpack.Booster(app, (col*app.cellSize)+
         (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
 
+def getDifficulty(app):
+    difficultyCurves = {'easy': {'c0': 1/60, 'c1': 1/1000, 'c2': 0},
+                        'medium': {'c0': 1/60, 'c1': 1/500, 'c2': 0},
+                        'hard': {'c0': 1/60, 'c1': 1/500, 'c2': 25}}
+    curve = difficultyCurves[app.difficulty]
+    return ((time.time()-app.timeInitial)*curve['c0'])+\
+           (int(app.currentRun//100)*curve['c1'])+app.deaths+curve['c2']
+
 # gets upperBeamRange from curves of time and difficulty value
 def difficultyWrapper(app, chunk, x):
-    difficultyCurves = {'easy': {'a': 5, 'b': 0},  # y = b + ax
-            'medium': {'a': 4, 'b': 20}, 'hard': {'a': 6, 'b': 40}}
-    curve = difficultyCurves[app.difficulty]
-    difficulty = app.difficultyBase+(curve['a']*((time.time()-
-                            app.timeInitial)/60))+curve['b']
+    difficulty = getDifficulty(app)+app.difficultyBase
     app.speed = app.scale*(2+((difficulty*1)/10))/app.timeDilation
     if app.lazyGeneration: upperBeamRange = 3
     upperBeamRange = int(difficulty/20)+1  # second curve
