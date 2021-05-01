@@ -617,8 +617,8 @@ class MyApp(App):
         self.timeSincePaused = time.time()
         self.staticTime = False
         self.points -= 100
-        self.powerUps += [Invincibility(self, self.player.x-self.width,
-                    self.player.y)]  # player has temporary invincibility
+        # self.powerUps += [Invincibility(self, self.player.x-self.width,
+        #             self.player.y)]  # player has temporary invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 
@@ -738,8 +738,8 @@ class MyApp(App):
         elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
         elif (event.key.lower() == 'left') and (self.difficultyBase-
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
-        elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
-                        self.player.x-self.width, self.player.y)]
+        # elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
+        #                 self.player.x-self.width, self.player.y)]
         elif event.key.lower() == 'p': testCode.printer(self)
         elif event.key.lower() == 'c': self.points += 500
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
