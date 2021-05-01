@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt  # used only for testing purposes
 # Printer/Debugger code
 ######
 
+def printData(app):
+    print(app.missileAvoids)
+    print(app.missileDeaths)
+    print(app.beamDeathQuadrants)
+    print(app.beamDeathTypes)
+
 def drawBorders(x, app, canvas, color):  # displays chunk cells and borders
     for row in range(app.rows):
         for col in range(app.cols):

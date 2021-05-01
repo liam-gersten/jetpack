@@ -35,6 +35,28 @@ class MiniChunk():  # small 2D list of a certain object
                 chunk[row+self.row][col+self.col] = id
         return chunk
 
+def biasDicts(app):
+    app.missileAvoids = {0: 0, 1: 0, 2: 0, 3: 0}
+    app.missileDeaths = {0: 0, 1: 0, 2: 0, 3: 0}
+    app.beamDeathQuadrants = {0: 0, 1: 0, 2: 0, 3: 0}
+    app.beamDeathTypes = {'static': 0, 'vertical': 0, 'horizontal': 0,
+                          'rotating': 0}
+
+def convertToProportions(dict):
+    [totalObservations, newDict] = [0, {}]
+    for key in dict: totalObservations += dict[key]
+    for key in dict:
+        if totalObservations != 0: newDict[key] = dict[key]/totalObservations
+        else: newDict[key] = 0
+    return newDict
+
+def getQuadrantFromY(app, y):
+    if y <= (app.barY+(app.trueHeight/2)):
+        if y <= (app.barY+(app.trueHeight/4)): return 0
+        return 1
+    if y <= (app.barY+((3*app.trueHeight)/4)): return 2
+    return 3
+
 # gets auto sequence of searches to make for one of 4 quadrants
 def getMovesByQuadrant(app, row):
     if row <= app.rows//2:

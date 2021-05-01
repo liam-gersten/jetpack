@@ -6,13 +6,13 @@ import math, time, random, copy
 
 ######
 # To do for MVP:  (all stored in chunkGeneration)
-# - quadrant from coords
-# - missile avoids quadrants
-# - missile death quadrants
-# - beam death quadrants
-# - beam death types
-# - number to probability
-# - bias curve
+# - (DONE) quadrant from coords
+# - (DONE) missile avoids quadrants
+# - (DONE) missile death quadrants
+# - (DONE) beam death quadrants
+# - (DONE) beam death types
+# - (DONE) number to probability
+# - bias curves
 # - implement bias curve
 # - implement to missile generation
 # - implement to beam generation
@@ -193,6 +193,7 @@ class Coin():  # spinning coin object
 
 class staticBeam():  # does not move
     def __init__(self, app, rows, cols, row, col, chunkX):
+        self.type = 'static'
         self.width = app.cellSize
         if (rows == 1) or (cols == 1): [minus, first, second] = [1, 0, 0]
         else:
@@ -219,6 +220,7 @@ class staticBeam():  # does not move
 
 class verticleBeam():  # moves vertically
     def __init__(self, app, rows, cols, row, col, chunkX):
+        self.type = 'vertical'
         self.width = app.cellSize
         self.centerY = app.barY+((row+(rows/2))*app.cellSize)
         self.yScale = self.width*(rows-1)/2
@@ -249,6 +251,7 @@ class verticleBeam():  # moves vertically
 
 class horizontalBeam():  # moves horizontally
     def __init__(self, app, rows, cols, row, col, chunkX):
+        self.type = 'horizontal'
         self.width = app.cellSize
         self.centerY = app.barY+((row+(rows/2))*app.cellSize)
         self.yScale = self.width*(rows-1)/2
@@ -279,6 +282,7 @@ class horizontalBeam():  # moves horizontally
 
 class rotatingBeam():  # rotate left or right
     def __init__(self, app, rows, cols, row, col, chunkX):
+        self.type = 'rotating'
         self.width = app.cellSize
         self.centerY = app.barY+((row+(rows/2))*app.cellSize)
         self.yScale = self.width*(rows-1)/2
@@ -519,6 +523,7 @@ class MyApp(App):
             [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
         self.missileMultiplier = 2.5
+        chunkGeneration.biasDicts(self)
         self.restartApp()
 
     def loadIndividualSprites(self):  # for distinct sprites
@@ -577,7 +582,7 @@ class MyApp(App):
 
     def restartApp(self):
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
-        [self.currentRun, self.lazeGeneration] = [0, False]
+        [self.currentRun, self.lazeGeneration, self.deaths] = [0, False, 0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
@@ -621,6 +626,7 @@ class MyApp(App):
     def killAll(self):  # puts game in gameOver state but does not reset
         [self.gameOver, self.paused] = [True, True]
         self.staticTime = time.time()+0
+        self.deaths += 1
         [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
         [self.miniXSize, self.miniYSize] = [(9*self.killXSize)/10,
                                             (9*self.killYSize)/10]
@@ -648,6 +654,10 @@ class MyApp(App):
         for beam in self.beams:
             if (not self.invincible) and (beam.interacts(self, self.player)):
                 kill = True
+                q = chunkGeneration.getQuadrantFromY(self, self.player.y)
+                self.beamDeathQuadrants[q] = self.beamDeathQuadrants[q]+1
+                self.beamDeathTypes[beam.type] = \
+                    self.beamDeathTypes[beam.type]+1
             if not beam.outOfBounds(): newBeams += [beam]
         for warning in self.warnings:
             if not warning.createMissile(self): newWarnings += [warning]
@@ -655,9 +665,15 @@ class MyApp(App):
             if (not self.invincible) and (missile.interacts(self, self.player.x,
                 self.player.y)):
                 self.explosionSetUp(missile)
+                q = chunkGeneration.getQuadrantFromY(self, missile.y)
+                self.missileDeaths[q] = self.missileDeaths[q]+1
                 kill = True
             elif missile.x+(self.missile.size[0]/2)+self.missileFire[0].size[0]\
-                    > 0: newMissiles += [missile]
+                    > 0:
+                newMissiles += [missile]
+            else:
+                q = chunkGeneration.getQuadrantFromY(self, missile.y)
+                self.missileAvoids[q] = self.missileAvoids[q]+1
         for power in self.powerUps:
             if self.powerUp:
                 if power.active and (not power.manage(self)):
@@ -745,6 +761,7 @@ class MyApp(App):
         elif event.key.lower() == 'c': self.points += 500
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
+        elif event.key == '2': testCode.printData(self)
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
 
     def redrawAll(self, canvas):
@@ -786,23 +803,23 @@ class MyApp(App):
                 self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
         fontSize = 50*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
-        # canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3],
-        #                         fill='darkgrey')
-        # canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
-        # canvas.create_text(self.killX, self.killY-(self.killYSize/5),
-        #     fill='red', text='Game Over!', anchor='center', font=font)
+        canvas.create_rectangle(box1[0], box1[1], box1[2], box1[3],
+                                fill='darkgrey')
+        canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
+        canvas.create_text(self.killX, self.killY-(self.killYSize/5),
+            fill='red', text='Game Over!', anchor='center', font=font)
         if self.points < 100: box = 'red'
         else: box = 'green'
-        # canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
-        #                     (self.height/10)+box3[3], fill=box)
+        canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
+                            (self.height/10)+box3[3], fill=box)
         fontSize = 24*(self.width//self.standardizedWidth)
         font = 'Times', str(fontSize), 'bold'
         canvas.create_text(self.killX, self.killY+(self.height/15),
                 fill='black', text='Respawn?', font=font)
-        # canvas.create_image(self.killX-(20*self.scale), self.killY+(
-        #     self.height/8), image=ImageTk.PhotoImage(self.coinSequence[0]))
-        # canvas.create_text(self.killX+(15*self.scale), self.killY+(
-        #     self.height/8), fill='black', text='100', font=font)
+        canvas.create_image(self.killX-(20*self.scale), self.killY+(
+            self.height/8), image=ImageTk.PhotoImage(self.coinSequence[0]))
+        canvas.create_text(self.killX+(15*self.scale), self.killY+(
+            self.height/8), fill='black', text='100', font=font)
 
     def drawStatusBar(self, canvas):  # top bar with statuses and buttons
         self.drawUpperCoin(canvas)
