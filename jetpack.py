@@ -738,8 +738,8 @@ class MyApp(App):
         elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
         elif (event.key.lower() == 'left') and (self.difficultyBase-
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
-        elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
-                        self.player.x-self.width, self.player.y)]
+        # elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
+        #                 self.player.x-self.width, self.player.y)]
         elif event.key.lower() == 'p': testCode.printer(self)
         elif event.key.lower() == 'c': self.points += 500
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
