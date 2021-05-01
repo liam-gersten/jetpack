@@ -1,6 +1,5 @@
-import pathfinders
 import jetpack
-import random, time, copy
+import random, copy, time
 
 class MiniChunk():  # small 2D list of a certain object
     def __init__(self, app, chunk, ranges, id):
@@ -36,6 +35,47 @@ class MiniChunk():  # small 2D list of a certain object
                 chunk[row+self.row][col+self.col] = id
         return chunk
 
+# gets auto sequence of searches to make for one of 4 quadrants
+def getMovesByQuadrant(app, row):
+    if row <= app.rows//2:
+        if row <= app.rows//4: return [[1, 1], [0, 1], [-1, 1]]
+        return [[0, 1], [1, 1], [-1, 1]]
+    if row <= 3*app.rows//4: return [[0, 1], [-1, 1], [1, 1]]
+    return [[-1, 1], [0, 1], [1, 1]]
+
+def checkFour(app, chunk, row, col):  # checks space for 2x2 scotty
+    for r in range(2):
+        for c in range(2):
+            if (row+r < 0) or (app.rows <= row+r) or (col+c < 0): return False
+            if col+c >= app.cols-1: return True
+            if not chunk[row+r][col+c]: return False
+    return True
+
+def pathFinder(app, chunk):  # pathfinder1's wrapper
+    for startRow in range(0, app.rows-1, 2):
+        if modifiedDepthFirst(app, chunk, startRow, 0): return True
+    return False
+
+def memorizeDFS(searcher):  # cache helper for modifiedDepthFirst
+    import functools
+    cachedResults = dict()
+    @functools.wraps(searcher)
+    def wrapper(*args):
+        if str(args) not in cachedResults:
+            cachedResults[str(args)] = searcher(*args)
+        return cachedResults[str(args)]
+    return wrapper
+
+@memorizeDFS
+def modifiedDepthFirst(app, chunk, row, col):
+    if not checkFour(app, chunk, row, col): return False
+    if col == app.cols-1: return True  # reached end
+    moves = getMovesByQuadrant(app, row)
+    for sequence in moves:
+        [testRow, testCol] = [row+sequence[0], col+sequence[1]]
+        if modifiedDepthFirst(app, chunk, testRow, testCol): return True
+    return False
+
 def conversionWrapper(app, chunk):  # converts chunk values into booleans
     if app.lazyGeneration: return True
     testChunk = []
@@ -45,7 +85,7 @@ def conversionWrapper(app, chunk):  # converts chunk values into booleans
             if type(chunk[r][c]) == list: row += [False]
             else: row += [True]
         testChunk += [row]
-    return pathfinders.pathFinder1(app, testChunk)
+    return pathFinder(app, testChunk)
 
 # places beams onto a test chunk and before testing with pathfinder
 def beamGenerator(app, chunk, upperBeamRange, x):

@@ -1,5 +1,5 @@
 from cmu_112_graphics import *
-import printer
+import testCode
 import chunkGeneration
 from PIL import Image
 import math, time, random, copy
@@ -19,8 +19,6 @@ def minDistance(pa, pb, px):
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
-    # if app.timeDilation == 3: color = ['forest green', 'lime green', 'green2',
-    #                                     'spring green']  # slowed time
     color = 'red'
     if app.timeDilation == 3: color ='spring green' # slowed time
     width = random.choice([11, 5, 12, 8, 10, 6])
@@ -99,7 +97,7 @@ class Scotty():  # class for player
         if self.freezeFactor != 1: image = ImageTk.PhotoImage(self.images[-2])
         canvas.create_image(self.x+self.changeX, self.y+self.changeY,
                             image=image)
-        if debug: printer.outlineScotty(self, canvas)
+        if debug: testCode.outlineScotty(self, canvas)
         if (app.invincible) and (self.freezeFactor == 1): canvas.create_image(
             self.x, self.y, image=ImageTk.PhotoImage(app.miniHeart))
 
@@ -160,8 +158,7 @@ class Coin():  # spinning coin object
         else: coinId = int((time.time()*10)%7)  # ranges 0 - 6
         if not self.special: image = app.getCachedPhotoImage(sequence[coinId])
         else:  # coin is in the top left of the menu bar
-            if app.coinStart:
-                sizeScale = \
+            if app.coinStart: sizeScale = \
             self.standardSize*(1+math.sin(math.pi*(time.time()-app.coinStart)))
             else: sizeScale = self.standardSize
             image = app.getCachedPhotoImage(
@@ -441,19 +438,6 @@ class TimeSlower():  # power up that slows down time
     def draw(self, app, canvas):
         drawPowerUp(self, app, canvas)
 
-class dragon():
-    def __init__(self, app, x, y):
-        pass
-
-    def updateCoords(self, app):
-        pass
-
-    def draw(self, app, canvas):
-        pass
-
-    def drawLimb(self, app, canvas):
-        pass
-
 class Cloud():  # background objects that do not influence gameplay
     def __init__(self, app, id):
         self.id = id
@@ -493,7 +477,7 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 
 class MyApp(App):
     def appStarted(self):
-        [self._mvcCheck, self.invincible] = [True, False]
+        [self._mvcCheck, self.invincible] = [True, True]
         [self.rows, self.cols, self.points] = [20, 40, 0]
         [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 0, 5]
         self.pathfinderStall = 0.5
@@ -622,7 +606,7 @@ class MyApp(App):
 
     def respawn(self):
         [self.gameOver, self.paused] = [False, False]
-        self.points -= 500
+        self.points -= 100
         self.powerUps += [Invincibility(self, self.player.x-self.width,
                     self.player.y)]  # player has temporary invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
@@ -687,7 +671,7 @@ class MyApp(App):
                     (self.scale*10*math.log(time.time()-self.downInitial+1)))
 
     def mousePressed(self, event):
-        if (self.points >= 500) and (self.gameOver):  # check for respawn click
+        if (self.points >= 100) and (self.gameOver):  # check for respawn click
             box = [self.killX-self.respawnSizeX, self.killY-self.respawnSizeY,
                     self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
             if (box[0] <= event.x <= box[2]) and ((self.height/10)+box[1] <=
@@ -733,7 +717,7 @@ class MyApp(App):
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
         elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
                         self.player.x-self.width, self.player.y)]
-        elif event.key.lower() == 'p': printer.printer(self)
+        elif event.key.lower() == 'p': testCode.printer(self)
         elif event.key.lower() == 'c': self.points += 500
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
@@ -744,8 +728,8 @@ class MyApp(App):
         if self.dDrops:
             for drop in self.drops: drop.draw(self, canvas)
         if self.debug:
-            printer.drawBorders(self.currentChunk.x, self, canvas, 'red')
-            printer.drawBorders(self.newChunk.x, self, canvas, 'blue')
+            testCode.drawBorders(self.currentChunk.x, self, canvas, 'red')
+            testCode.drawBorders(self.newChunk.x, self, canvas, 'blue')
         self.player.draw(self, canvas, self.debug)
         self.player.drawFire(self, canvas)
         for coin in self.coins: coin.draw(self, canvas, self.debug,
@@ -783,7 +767,7 @@ class MyApp(App):
         canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
         canvas.create_text(self.killX, self.killY-(self.killYSize/5),
             fill='red', text='Game Over!', anchor='center', font=font)
-        if self.points < 500: box = 'red'
+        if self.points < 100: box = 'red'
         else: box = 'green'
         canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
                             (self.height/10)+box3[3], fill=box)
@@ -794,7 +778,7 @@ class MyApp(App):
         canvas.create_image(self.killX-(20*self.scale), self.killY+(
             self.height/8), image=ImageTk.PhotoImage(self.coinSequence[0]))
         canvas.create_text(self.killX+(15*self.scale), self.killY+(
-            self.height/8), fill='black', text='500', font=font)
+            self.height/8), fill='black', text='100', font=font)
 
     def drawStatusBar(self, canvas):  # top bar with statuses and buttons
         self.drawUpperCoin(canvas)
@@ -854,4 +838,4 @@ class MyApp(App):
         for cloud in self.clouds: cloud.draw(canvas)
 
 if __name__ == '__main__':
-    MyApp(width=800, height=450)  # cohon doesn't move below 400 x 250
+    MyApp(width=800, height=450)
