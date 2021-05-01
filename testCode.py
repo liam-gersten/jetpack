@@ -3,6 +3,14 @@ import random, copy, time
 import matplotlib.pyplot as plt  # used only for testing purposes
 
 ######
+# Known Bugs:
+# - Timers continue during death and pause
+# - Beam locations change after slowed time
+# - Size doesn't work well
+# - Rare negative height error
+######
+
+######
 # Printer/Debugger code
 ######
 
@@ -12,13 +20,17 @@ def printData(app):
     print(app.beamDeathQuadrants)
     print(app.beamDeathTypes)
     print('\n')
-    dist1 = chunkGeneration.mergeSingleDistribution(25, app.missileAvoids, 'missile')
-    dist2 = chunkGeneration.mergeSingleDistribution(25, app.missileDeaths, 'missile')
+    dist1 = chunkGeneration.mergeSingleDistribution(25, app.missileAvoids,
+                                                    'missile')
+    dist2 = chunkGeneration.mergeSingleDistribution(25, app.missileDeaths,
+                                                    'missile')
     print(dist1)
     print(dist2)
     print(chunkGeneration.mergeDoubleDistributions(100, dist2, dist1))
-    print(chunkGeneration.mergeSingleDistribution(25, app.beamDeathQuadrants, 'beam'))
-    print(chunkGeneration.mergeSingleDistribution(25, app.beamDeathTypes, 'beam'))
+    print(chunkGeneration.mergeSingleDistribution(25, app.beamDeathQuadrants,
+                                                  'beam'))
+    print(chunkGeneration.mergeSingleDistribution(25, app.beamDeathTypes,
+                                                  'beam'))
     print('\n')
 
 def drawBorders(x, app, canvas, color):  # displays chunk cells and borders

@@ -4,22 +4,6 @@ import chunkGeneration
 from PIL import Image
 import math, time, random, copy
 
-######
-# To do for MVP:  (all stored in chunkGeneration)
-# - implement to missile generation
-# - implement to beam generation
-######
-
-######
-# Known Bugs:
-# - Non-static Beams move on some deaths
-# - Timers continue during death and pause
-# - Coins freeze after first death
-# - Beam locations change after slowed time
-# - Size doesn't work well
-# - Rare negative height error
-######
-
 def almostEqual(d1, d2, epsilon=10**-7): return (abs(d2-d1) < epsilon)
 
 # vector calculus for min distance between point and line
@@ -480,7 +464,7 @@ class Cloud():  # background objects that do not influence gameplay
 
     def move(self, app):
         if self.x+(self.sizeX*self.size) < 0: self.reDefine(app, app.width)
-        self.x -= self.speed//app.cloudMultiplier
+        self.x -= abs(self.speed/app.cloudMultiplier)
 
     def draw(self, canvas):
         [x1, y1] = [self.x+(self.size*(self.sizeX/2)),
@@ -515,7 +499,6 @@ class MyApp(App):
             [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
         self.missileMultiplier = 2.5
-        chunkGeneration.biasDicts(self)
         self.restartApp()
 
     def loadIndividualSprites(self):  # for distinct sprites
@@ -573,16 +556,19 @@ class MyApp(App):
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
 
     def restartApp(self):
+        chunkGeneration.resetLongs(self)
+        chunkGeneration.resetStandards(self)
+        chunkGeneration.resetFasts(self)
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
-        [self.currentRun, self.lazeGeneration, self.deaths] = [0, False, 0]
+        [self.currentRun, self.lazyGeneration, self.deaths] = [0, False, 0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, False]
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
         [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
         [self.downInitial, self.upInitial, self.timeSincePaused,
-         self.timeInitial, self.balance] = [time.time()-1, time.time()-1,
-            time.time()-1, time.time()+1, time.time()]
+         self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
+                              time.time()+1]
         [self.timeDilation, self.invincible] = [1, False]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
@@ -628,14 +614,18 @@ class MyApp(App):
 
     def respawn(self):
         [self.gameOver, self.paused] = [False, False]
+        self.timeSincePaused = time.time()
+        self.staticTime = False
         self.points -= 100
-        # self.powerUps += [Invincibility(self, self.player.x-self.width,
-        #             self.player.y)]  # player has temporary invincibility
+        self.powerUps += [Invincibility(self, self.player.x-self.width,
+                    self.player.y)]  # player has temporary invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 
     def manageAll(self):  # deletes and adds objects based on locations
-        if time.time()-self.balance >= 120: chunkGeneration.biasDicts(self)
+        if time.time()-self.balance >= 150: chunkGeneration.resetStandards(self)
+        if time.time()-self.beamBalance >= 50: chunkGeneration.resetFasts(self)
+        if time.time()-self.longBalance >= 500: chunkGeneration.resetLongs(self)
         [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
                     [], False, [], [], []]
         if self.newChunk.x <= 0:

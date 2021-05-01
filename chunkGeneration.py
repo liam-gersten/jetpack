@@ -2,19 +2,23 @@ import jetpack
 import random, copy, time
 
 class MiniChunk():  # small 2D list of a certain object
-    def __init__(self, app, chunk, ranges, id):
+    def __init__(self, app, chunk, ranges, id, coordRanges):
         [self.literal, self.row, self.col] = [[], 0, 0]
         while True:  # keeps trying to make one that firs on the main chunk
             rows = random.randrange(ranges[0][0], ranges[0][1])
             cols = random.randrange(ranges[1][0], ranges[1][1])
             if not (id == [] and ([rows, cols] == [2, 2])):
+                if id == 'rotating': rows = cols
                 testList = []
                 for r in range(rows):
                     row = [id for i in range(cols)]
                     testList += [row]
                 if app.firstChunk: firstCol = app.cols/2
                 else: firstCol = 3
-                row = random.randrange(0, app.rows-len(testList))
+                if coordRanges and (coordRanges[0] < (coordRanges[1]-
+                    len(testList))): row = random.randrange(coordRanges[0],
+                                                coordRanges[1]-len(testList))
+                else: row = random.randrange(0, app.rows-len(testList))
                 col = random.randrange(firstCol, app.cols-len(testList[0]))
                 if self.checkAvalibility(app, chunk, testList, row, col):
                     [self.literal, self.row, self.col] = [testList, row, col]
@@ -35,12 +39,19 @@ class MiniChunk():  # small 2D list of a certain object
                 chunk[row+self.row][col+self.col] = id
         return chunk
 
-def biasDicts(app):
-    app.missileAvoids = {0: 0, 1: 0, 2: 0, 3: 0}
-    app.missileDeaths = {0: 0, 1: 0, 2: 0, 3: 0}
-    app.beamDeathQuadrants = {0: 0, 1: 0, 2: 0, 3: 0}
-    app.beamDeathTypes = {'static': 0, 'vertical': 0, 'horizontal': 0,
-                          'rotating': 0}
+def resetStandards(app):
+    app.balance = time.time()
+    app.missileAvoids = {0: 1, 1: 1, 2: 1, 3: 1}
+    app.missileDeaths = {0: 1, 1: 1, 2: 1, 3: 1}
+
+def resetFasts(app):
+    app.beamBalance = time.time()
+    app.beamDeathQuadrants = {0: 1, 1: 1, 2: 1, 3: 1}
+
+def resetLongs(app):
+    app.longBalance = time.time()
+    app.beamDeathTypes = {'static': 1, 'vertical': 1, 'horizontal': 1,
+                           'rotating': 1}
 
 def getQuadrantFromY(app, y):
     if y <= (app.barY+(app.trueHeight/2)):
@@ -123,8 +134,8 @@ def mergeDoubleDistributions(difficulty, dist1, dist2):
 
 def mergeSingleDistribution(difficulty, distribution, type):
     totalPossible = 0
-    if type == 'missile': biasWeight = difficulty/50
-    else: biasWeight = difficulty/100
+    if type == 'missile': biasWeight = (3/4)+(difficulty/100)
+    else: biasWeight = (3/4)+difficulty/200
     newProportions = {}
     originalWeight = (1-biasWeight)*100
     biasWeight *= 100
@@ -146,37 +157,52 @@ def createDistribution(probabilities):
         for key in probabilities: distribution += [key]
     return distribution
 
+def getBeamRowColRanges(app, quadrant):
+    if quadrant == 0: return [0, app.rows//4]
+    if quadrant == 1: return [app.rows//4, app.rows//2]
+    if quadrant == 2: return [app.rows//2, (app.rows*3)//4]
+    return [(app.rows*3)//4, app.rows-1]
+
 # places beams onto a test chunk and before testing with pathfinder
-def beamGenerator(app, chunk, upperBeamRange, x):
+def beamGenerator(app, chunk, upperBeamRange, x, difficulty):
     beamNumbers = [i for i in range(1, upperBeamRange+1)]
     while True:
-        [tempBeams, tempChunk] = [[], copy.deepcopy(chunk)]
+        [tempBeams, tempChunk, types] = [[], copy.deepcopy(chunk), []]
         for i in range(random.choice(beamNumbers)):
-            beamChunk = MiniChunk(app, chunk, [[2, 9], [2, 9]], [])
+            typeProbabilities = mergeSingleDistribution(difficulty,
+                            app.beamDeathTypes, 'beam')
+            typeDistribution = createDistribution(typeProbabilities)
+            types += [random.choice(typeDistribution)]
+            quadrantProbabilities = mergeSingleDistribution(difficulty,
+                            app.beamDeathQuadrants, 'beam')
+            quadrantDistribution = createDistribution(quadrantProbabilities)
+            quadrant = random.choice(quadrantDistribution)
+            ranges = getBeamRowColRanges(app, quadrant)
+            beamChunk = MiniChunk(app, chunk, [[2, 9], [2, 9]], types[i],
+                                  ranges)
             tempBeams += [beamChunk]  # objects help until tested
             tempChunk = beamChunk.place(tempChunk, [])
         if conversionWrapper(app, tempChunk):  # pathfinder returns True
             chunk = tempChunk
-            for beamChunk in tempBeams:  # one of four beam types created
+            for i in range(len(tempBeams)):
+                beamChunk = tempBeams[i]
                 sizes = [len(beamChunk.literal), len(beamChunk.literal[0]),
                             beamChunk.row, beamChunk.col]
-                if sizes[0] == sizes[1]: type = 4
-                else: type = random.choice([1, 2, 3])
-                if type == 1: object = jetpack.staticBeam(app, sizes[0],
-                                        sizes[1], sizes[2], sizes[3], x)
-                elif type == 2: object = jetpack.verticleBeam(app, sizes[0],
-                                        sizes[1], sizes[2], sizes[3], x)
-                elif type == 3: object = jetpack.horizontalBeam(app, sizes[0],
-                                        sizes[1], sizes[2], sizes[3], x)
+                if types[i] == 'static': object = jetpack.staticBeam(app,
+                            sizes[0], sizes[1], sizes[2], sizes[3], x)
+                elif types[i] == 'vertical': object = jetpack.verticleBeam(app,
+                            sizes[0], sizes[1], sizes[2], sizes[3], x)
+                elif types[i] == 'horizontal': object = jetpack.horizontalBeam(
+                            app, sizes[0], sizes[1], sizes[2], sizes[3], x)
                 else: object = jetpack.rotatingBeam(app, sizes[0], sizes[1],
-                                                sizes[2], sizes[3], x)
+                            sizes[2], sizes[3], x)
                 app.beams += [object]
             return chunk
 
 # places coin chunks onto the final chunk (already verified by pathfinder)
 def coinGenerator(app, chunk, x):
     for i in range(random.randint(1, 3)):  # range of coin chunks
-        coinChunk = MiniChunk(app, chunk, [[2, 3], [2, 3]], 'c')
+        coinChunk = MiniChunk(app, chunk, [[2, 3], [2, 3]], 'c', False)
         for row in range(len(coinChunk.literal)):
             for col in range(len(coinChunk.literal[0])):
                 app.coins += [jetpack.Coin(app, row+coinChunk.row,
@@ -197,12 +223,8 @@ def missileGenerator(app, difficulty, byPass):  # spawns missiles
                                         app.missileAvoids, 'missile')
         deathProbabilities = mergeSingleDistribution(difficulty,
                                         app.missileDeaths, 'missile')
-        print(avoidanceProbabilities)
-        print(deathProbabilities)
         combinedProbabilities = mergeDoubleDistributions(difficulty,
                                 deathProbabilities, avoidanceProbabilities)
-        print(combinedProbabilities)
-        print('\n')
         fullDistribution = createDistribution(combinedProbabilities)
         quadrant = random.choice(fullDistribution)
         spawnRange = getYRangeFromQuadrant(app, quadrant)
@@ -243,10 +265,10 @@ def difficultyWrapper(app, chunk, x):
     difficulty = getDifficulty(app)+app.difficultyBase
     app.speed = app.scale*(2+((difficulty*1)/10))/app.timeDilation
     if app.lazyGeneration: upperBeamRange = 3
-    upperBeamRange = int(difficulty/20)+1  # second curve
+    else: upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
-    chunk = beamGenerator(app, chunk, upperBeamRange, x)
-    # if not app.powerUp: powerUpGenerator(app, chunk)
+    chunk = beamGenerator(app, chunk, upperBeamRange, x, difficulty)
+    if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
 def generationManager(app, x): # makes blank 2D list to be called
