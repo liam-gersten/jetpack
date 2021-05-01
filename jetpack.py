@@ -637,8 +637,8 @@ class MyApp(App):
     def respawn(self):
         [self.gameOver, self.paused] = [False, False]
         self.points -= 100
-        self.powerUps += [Invincibility(self, self.player.x-self.width,
-                    self.player.y)]  # player has temporary invincibility
+        # self.powerUps += [Invincibility(self, self.player.x-self.width,
+        #             self.player.y)]  # player has temporary invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 

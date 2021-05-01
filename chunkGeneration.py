@@ -42,14 +42,6 @@ def biasDicts(app):
     app.beamDeathTypes = {'static': 0, 'vertical': 0, 'horizontal': 0,
                           'rotating': 0}
 
-def convertToProportions(dict):
-    [totalObservations, newDict] = [0, {}]
-    for key in dict: totalObservations += dict[key]
-    for key in dict:
-        if totalObservations != 0: newDict[key] = dict[key]/totalObservations
-        else: newDict[key] = 0
-    return newDict
-
 def getQuadrantFromY(app, y):
     if y <= (app.barY+(app.trueHeight/2)):
         if y <= (app.barY+(app.trueHeight/4)): return 0
@@ -108,6 +100,40 @@ def conversionWrapper(app, chunk):  # converts chunk values into booleans
             else: row += [True]
         testChunk += [row]
     return pathFinder(app, testChunk)
+
+def mergeDoubleDistributions(difficulty, dist1, dist2):
+    avoidanceWeight = (1/10)+(difficulty/250)
+    deathWeight = (1-avoidanceWeight)*100
+    avoidanceWeight *= 100
+    newProportions = {}
+    for key in dist1:
+        [p1, p2] = [dist1[key], dist2[key]]
+        newProportions[key] = ((deathWeight*p1)+(avoidanceWeight*p2))/100
+    return newProportions
+
+def mergeSingleDistribution(difficulty, distribution, type):
+    totalPossible = 0
+    if type == 'missile': biasWeight = difficulty/50
+    else: biasWeight = difficulty/100
+    newProportions = {}
+    originalWeight = (1-biasWeight)*100
+    biasWeight *= 100
+    for key in distribution: totalPossible += distribution[key]
+    for key in distribution:
+        p1 = distribution[key]/totalPossible
+        p2 = 0.25
+        newProportions[key] = ((biasWeight*p1)+(originalWeight*p2))/100
+    return newProportions
+
+def createDistribution(app, difficulty, type):
+    [distribution, distributionSize] = [[], 30]
+    probabilities = mergeSingleDistribution(difficulty, app.beamDeathTypes,
+                                            type)
+    for key in probabilities:
+        number = int(probabilities[key]*distributionSize)
+        for i in range(number):
+            distribution += [key]
+    return distribution
 
 # places beams onto a test chunk and before testing with pathfinder
 def beamGenerator(app, chunk, upperBeamRange, x):
@@ -192,7 +218,7 @@ def difficultyWrapper(app, chunk, x):
     upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x)
-    if not app.powerUp: powerUpGenerator(app, chunk)
+    # if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
 def generationManager(app, x): # makes blank 2D list to be called

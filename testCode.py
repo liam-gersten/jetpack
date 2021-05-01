@@ -11,6 +11,11 @@ def printData(app):
     print(app.missileDeaths)
     print(app.beamDeathQuadrants)
     print(app.beamDeathTypes)
+    print('\n')
+    print(chunkGeneration.mergeSingleDistribution(25, app.missileDeaths, 'missile'))
+    print(chunkGeneration.mergeSingleDistribution(25, app.beamDeathQuadrants, 'beam'))
+    print(chunkGeneration.mergeSingleDistribution(25, app.beamDeathTypes, 'beam'))
+    print('\n')
 
 def drawBorders(x, app, canvas, color):  # displays chunk cells and borders
     for row in range(app.rows):
