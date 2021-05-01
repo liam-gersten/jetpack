@@ -136,7 +136,7 @@ def mergeSingleDistribution(difficulty, distribution, type):
     totalPossible = 0
     if type == 'missile': biasWeight = (3/4)+(difficulty/100)
     else: biasWeight = (3/4)+difficulty/200
-    biasWeight = 1
+    # biasWeight = 1
     newProportions = {}
     originalWeight = (1-biasWeight)*100
     biasWeight *= 100
