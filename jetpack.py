@@ -19,6 +19,7 @@ def minDistance(pa, pb, px):
                 (axVector[0])))/(math.sqrt(((abVector[0])**2)+(abVector[1]**2)))
 
 def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
+    if (x1 > app.width) and (x2 > app.width): return None
     color = 'red'
     if app.timeDilation == 3: color ='spring green' # slowed time
     width = random.choice([11, 5, 12, 8, 10, 6])
@@ -46,7 +47,7 @@ def managePowerUp(object, app):  # manages power ups of any type
     return False
 
 def drawPowerUp(object, app, canvas):  # draws power ups of any type
-    # floats up and down
+    if object.x-app.cellSize > app.width: return None
     if not object.active: yChange = 5*math.sin(5*time.time())*app.scale
     else: yChange = 0
     canvas.create_image(object.x, object.y+yChange,
@@ -702,25 +703,18 @@ class MyApp(App):
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 
-    def manageAll(self):  # deletes and adds objects based on locations
-        if time.time()-self.balance >= 150: chunkGeneration.resetStandards(self)
-        if time.time()-self.beamBalance >= 50: chunkGeneration.resetFasts(self)
-        if time.time()-self.longBalance >= 500: chunkGeneration.resetLongs(self)
-        [newCoins, newBeams, kill, newWarnings, newMissiles, newPowerUps] = [[],
-                    [], False, [], [], []]
+    def manageObstacles(self):
+        [newBeams, kill, newWarnings, newMissiles] = [[], False, [], []]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
                                       self.newChunk.x)
             self.newChunk = Chunk(self, False, self.width)
-        for coin in self.coins:
-            if coin.x > (-self.coinSize): newCoins += [coin]
         for beam in self.beams:
             if (not self.invincible) and (beam.interacts(self, self.player)):
                 kill = True
                 q = chunkGeneration.getQuadrantFromY(self, self.player.y)
-                self.beamDeathQuadrants[q] = self.beamDeathQuadrants[q]+1
-                self.beamDeathTypes[beam.type] = \
-                    self.beamDeathTypes[beam.type]+1
+                self.beamDeathQuadrants[q] += 1
+                self.beamDeathTypes[beam.type] += 1
             if not beam.outOfBounds(): newBeams += [beam]
         for warning in self.warnings:
             if not warning.createMissile(self): newWarnings += [warning]
@@ -729,26 +723,35 @@ class MyApp(App):
                 self.player.y)):
                 self.explosionSetUp(missile)
                 q = chunkGeneration.getQuadrantFromY(self, missile.y)
-                self.missileDeaths[q] = self.missileDeaths[q]+1
+                self.missileDeaths[q] += 1
                 kill = True
             elif missile.x+(self.missile.size[0]/2)+self.missileFire[0].size[0]\
-                    > 0:
-                newMissiles += [missile]
+                    > 0: newMissiles += [missile]
             else:
                 q = chunkGeneration.getQuadrantFromY(self, missile.y)
-                self.missileAvoids[q] = self.missileAvoids[q]+1
+                self.missileAvoids[q] += 1
+        if kill: self.killAll()
+        [self.beams, self.warnings, self.missiles] = \
+            [newBeams, newWarnings, newMissiles]
+
+
+    def manageAll(self):  # deletes and adds objects based on locations
+        if time.time()-self.balance >= 150: chunkGeneration.resetStandards(self)
+        if time.time()-self.beamBalance >= 50: chunkGeneration.resetFasts(self)
+        if time.time()-self.longBalance >= 500: chunkGeneration.resetLongs(self)
+        [newCoins, newPowerUps] = [[], []]
+        for coin in self.coins:
+            if coin.x > (-self.coinSize): newCoins += [coin]
         for power in self.powerUps:
-            if self.powerUp:
-                if power.active and (not power.manage(self)):
-                    newPowerUps += [power]
+            if self.powerUp and power.active and (not power.manage(self)):
+                newPowerUps += [power]
             elif not power.manage(self): newPowerUps += [power]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]
             self.drops += [BackDrop(self, False, recentX)]
-        [self.coins, self.beams, self.warnings, self.missiles, self.powerUps] =\
-            [newCoins, newBeams, newWarnings, newMissiles, newPowerUps]
-        if kill: self.killAll()
+        [self.coins, self.powerUps] = [newCoins, newPowerUps]
+        self.manageObstacles()
         self.checkCoinInteraction()
 
     def moveAll(self):  # moves all objects at various speeds

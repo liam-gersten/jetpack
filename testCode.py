@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt  # used only for testing purposes
 
 ######
 # Known Bugs:
-# - Draws offScreen stuff
 # - Size doesn't work well
 ######
 
