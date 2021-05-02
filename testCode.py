@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt  # used only for testing purposes
 
 ######
 # Known Bugs:
-# - Timers continue during death and pause
-# - Beam locations change after slowed time
+# - Draws offScreen stuff
 # - Size doesn't work well
 ######
 

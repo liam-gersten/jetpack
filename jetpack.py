@@ -213,6 +213,7 @@ class VerticalBeam():  # moves vertically
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
@@ -224,12 +225,17 @@ class VerticalBeam():  # moves vertically
         else: self.timePaused += (time.time()-self.timeFrozen)
         self.frozen = state
 
+    def dilate(self, app):
+        self.timeStarted = time.time()-app.timeInitial
+        self.snapShot = self.timePosition
+
     def interacts(self, app, player):
         if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
                                        app.timeInitial
         else: timePosition = (time.time()-self.timePaused)-app.timeInitial
-        yPosition = self.yScale*math.cos(2*math.pi*((timePosition/
-                                        app.timeDilation)%1))
+        self.timePosition = ((timePosition-self.timeStarted)/app.timeDilation)+\
+                       self.snapShot
+        yPosition = self.yScale*math.cos(2*math.pi*(self.timePosition%1))
         pa = [self.centerX-self.xScale, self.centerY+yPosition]
         pb = [self.centerX+self.xScale, self.centerY+yPosition]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
@@ -239,8 +245,9 @@ class VerticalBeam():  # moves vertically
         if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
                                        app.timeInitial
         else: timePosition = (time.time()-self.timePaused)-app.timeInitial
-        yPosition = self.yScale*math.cos(2*math.pi*((timePosition/
-                                        app.timeDilation)%1))
+        timePosition = ((timePosition-self.timeStarted)/app.timeDilation)+\
+                            self.snapShot
+        yPosition = self.yScale*math.cos(2*math.pi*(timePosition%1))
         y = self.centerY+yPosition
         drawBeam(app, canvas, x1, y, x2, y)
 
@@ -252,6 +259,7 @@ class HorizontalBeam():  # moves horizontally
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
@@ -263,12 +271,17 @@ class HorizontalBeam():  # moves horizontally
         else: self.timePaused += (time.time()-self.timeFrozen)
         self.frozen = state
 
+    def dilate(self, app):
+        self.timeStarted = time.time()-app.timeInitial
+        self.snapShot = self.timePosition
+
     def interacts(self, app, player):
         if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
                                        app.timeInitial
         else: timePosition = (time.time()-self.timePaused)-app.timeInitial
-        xPosition = self.xScale*math.cos(2*math.pi* # animation curve
-                    ((timePosition/app.timeDilation)%1))
+        self.timePosition = ((timePosition-self.timeStarted)/app.timeDilation)+\
+                            self.snapShot
+        xPosition = self.xScale*math.cos(2*math.pi*(self.timePosition%1))
         pa = [self.centerX+xPosition, self.centerY-self.yScale]
         pb = [self.centerX+xPosition, self.centerY+self.yScale]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
@@ -278,8 +291,9 @@ class HorizontalBeam():  # moves horizontally
         if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
                                         app.timeInitial
         else: timePosition = (time.time()-self.timePaused)-app.timeInitial
-        xPosition = self.xScale*math.cos(2*math.pi*  # animation curve
-                    ((timePosition/app.timeDilation)%1))
+        timePosition = ((timePosition-self.timeStarted)/app.timeDilation)+\
+                       self.snapShot
+        xPosition = self.xScale*math.cos(2*math.pi*(timePosition%1))
         x = self.centerX+xPosition
         drawBeam(app, canvas, x, y1, x, y2)
 
@@ -291,6 +305,7 @@ class RotatingBeam():  # rotate left or right
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
@@ -302,15 +317,21 @@ class RotatingBeam():  # rotate left or right
         else: self.timePaused += (time.time()-self.timeFrozen)
         self.frozen = state
 
-    def getAngle(self, app):
+    def dilate(self, app):
+        self.timeStarted = time.time()-app.timeInitial
+        self.snapShot = self.timePosition
+
+    def getAngle(self, app, view):
         if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
                                         app.timeInitial
         else: timePosition = (time.time()-self.timePaused)-app.timeInitial
-        timeStamp = 2*((timePosition/app.timeDilation)%1)
-        return math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
+        timePosition = ((timePosition-self.timeStarted)/app.timeDilation)+\
+                       self.snapShot
+        if not view: self.timePosition = timePosition
+        return math.pi+(math.pi*(math.cos(((2*(timePosition%1))*math.pi)/2)))
 
     def interacts(self, app, player): # animation curve below
-        angle = self.getAngle(app)
+        angle = self.getAngle(app, False)
         [dy, dx] = [self.yScale*math.sin(angle),
                     self.yScale*math.cos(angle)]
         return minDistance([(self.centerX-dx), (self.centerY-dy)],
@@ -318,7 +339,7 @@ class RotatingBeam():  # rotate left or right
                (player.sizeX/2)
 
     def draw(self, app, canvas):  # animation curve below
-        angle = self.getAngle(app)
+        angle = self.getAngle(app, True)
         if almostEqual(angle, 2*math.pi): angle = 0
         [dy, dx] = [self.yScale*math.sin(angle), self.yScale*math.cos(angle)]
         [x1, y1, x2, y2] = [self.centerX-dx, self.centerY-dy,
@@ -451,6 +472,8 @@ class Invincibility():  # heart power up
         self.timeInitial = time.time()
         app.invincible = True
         app.timeDilation = 1/2  # speed is doubled
+        for beam in app.beams:
+            if beam.type != 'static': beam.dilate(app)
         app.speed = app.speed/app.timeDilation
         app.missiles = []
 
@@ -486,6 +509,8 @@ class TimeSlower():  # power up that slows down time
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
         app.timeDilation = 3  # three times as slow
+        for beam in app.beams:
+            if beam.type != 'static': beam.dilate(app)
         app.speed = app.speed/app.timeDilation
 
     def manage(self, app):
@@ -803,8 +828,9 @@ class MyApp(App):
             testCode.drawBorders(self.newChunk.x, self, canvas, 'blue')
         self.player.draw(self, canvas, self.debug)
         self.player.drawFire(self, canvas)
-        for coin in self.coins: coin.draw(self, canvas, self.debug,
-                                          self.coinSequence, self.coinSize)
+        for coin in self.coins:
+            if coin.x-self.cellSize <= self.width: coin.draw(self, canvas,
+                self.debug, self.coinSequence, self.coinSize)
         for beam in self.beams: beam.draw(self, canvas)
         for exclamation in self.warnings: exclamation.draw(self, canvas)
         for missile in self.missiles: missile.draw(self, canvas)
