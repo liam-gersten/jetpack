@@ -136,11 +136,11 @@ class Scotty():  # class for player
 class BackDrop():  # single sprite of Cohon University Center
     def __init__(self, app, index, x):
         self.x = x
-        if index: self.x = (app.dropSize[0]/2)+(app.dropSize[0]*index)
+        if index: self.x = (app.dropSize[0]*index)-(app.dropSize[0]/2)
         self.y = app.height-(app.dropSize[1]/2)
         self.key = random.choice([0, 1])
 
-    def move(self, app): self.x -= app.speed//(app.dropMultiplier)
+    def move(self, app): self.x -= app.speed/app.dropMultiplier
 
     def draw(self, app, canvas): canvas.create_image(self.x, self.y,
             image=app.getCachedPhotoImage(app.dropImages[self.key]))
@@ -432,7 +432,7 @@ class Booster():  # rocket fuel power up
         self.frozen = state
 
     def activate(self, app):
-        [self.active, app.powerUp] = [True, True]
+        [self.active, app.powerUp, app.dDrops] = [True, True, False]
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
         [app.invincible, app.missiles, app.lazyGeneration] = [True, [], True]
@@ -446,7 +446,10 @@ class Booster():  # rocket fuel power up
         return managePowerUp(self, app)
 
     def deactivate(self, app):
-        [app.invincible, app.powerUp] = [False, False]
+        [app.invincible, app.powerUp, app.dDrops] = [False, False, True]
+        app.drops = []
+        for i in range((app.width//app.dropSize[0])+2):
+            app.drops += [BackDrop(app, i, False)]
         app.lazyGeneration = False
         app.speed = self.priorSpeed
         app.player.freezeFactor = 1
@@ -567,6 +570,7 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 
 class MyApp(App):
     def appStarted(self):
+        self.speedDifference = 3
         [self._mvcCheck, self.invincible] = [True, True]
         [self.rows, self.cols, self.points] = [20, 40, 0]
         [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 0, 5]
@@ -580,7 +584,7 @@ class MyApp(App):
         if self.width <= 400: self.buttonSizes = self.barY
         self.trueHeight = self.height-self.barY
         self.cellSize = self.width/self.cols
-        [self.dDrops, self.dCoins, self.lazyGeneration] = [False, True, False]
+        [self.dDrops, self.dCoins, self.lazyGeneration] = [True, True, False]
         [self.timerDelay, self.coinSize, self.coinSpacing] = \
             [1, 16*self.scale, 4*self.scale]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
@@ -796,10 +800,16 @@ class MyApp(App):
             self.killY -= 10*self.scale  # moves game over screen
         self.specialCoin.changeTimeState(self)
         if not self.paused: self.moveAll()
-        if self.player.up: self.player.move(self,
-            (-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
-        elif (not self.paused) or self.gameOver: self.player.move(self,
+        if self.player.up:
+            if self.dDrops: self.player.move(self, ((3*self.speedDifference)/4)*
+                    (-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
+            else: self.player.move(self, (-4*self.scale*(time.time()-
+                                        self.upInitial+1)**(1/2)))
+        elif (not self.paused) or self.gameOver:
+            if self.dDrops: self.player.move(self, ((3*self.speedDifference)/2)*
                     (self.scale*10*math.log(time.time()-self.downInitial+1)))
+            else: self.player.move(self, (self.scale*10*math.log(time.time()-
+                                            self.downInitial+1)))
 
     def mousePressed(self, event):
         if self.settingsOpen: self.clickSettings(event.x, event.y)
