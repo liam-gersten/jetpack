@@ -214,6 +214,7 @@ class VerticalBeam():  # moves vertically
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        self.timePosition = 0
         [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
 
@@ -260,6 +261,7 @@ class HorizontalBeam():  # moves horizontally
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        self.timePosition = 0
         [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
 
@@ -307,6 +309,7 @@ class RotatingBeam():  # rotate left or right
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
         [self.timeStarted, self.snapShot] = [0, 0]
+        self.timePosition = 0
         [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
@@ -591,16 +594,22 @@ class MyApp(App):
         [self.coinSequence, self.igniteImages, self.buttons, self.missileFire,
          self.rightFire] = [{}, {}, {}, {}, {}]
         self.buttons['pause'] = self.loadImage('sprites/pause.png')
-        self.clockCircle = self.loadImage('sprites/clockCircle.png')
-        self.clock = self.loadImage('sprites/clock.png')
-        self.heart = self.loadImage('sprites/heart.png')
-        self.miniHeart = self.loadImage('sprites/miniHeart.png')
+        self.clockCircle = self.scaleImage(
+            self.loadImage('sprites/clockCircle.png'), self.scale)
+        self.clock = self.scaleImage(self.loadImage('sprites/clock.png'),
+                                     self.scale)
+        self.heart = self.scaleImage(self.loadImage('sprites/heart.png'),
+                                     self.scale)
+        self.miniHeart = self.scaleImage(
+            self.loadImage('sprites/miniHeart.png'), self.scale)
         self.buttons['play'] = self.loadImage('sprites/play.png')
         self.buttons['exit'] = self.loadImage('sprites/exit.png')
         self.buttons['reset'] = self.loadImage('sprites/reset.png')
         self.buttons['settings'] = self.loadImage('sprites/settings.png')
+        for button in self.buttons: self.buttons[button] = \
+            self.scaleImage(self.buttons[button], self.scale)
         self.missile = self.loadImage('sprites/missile.png')
-        self.missile = self.scaleImage(self.missile, 1.5)
+        self.missile = self.scaleImage(self.missile, 1.5*self.scale)
         self.gas = self.loadImage('sprites/gas.png')
 
     def loadSprites(self):  # for sets of similar sprites
@@ -734,7 +743,6 @@ class MyApp(App):
         [self.beams, self.warnings, self.missiles] = \
             [newBeams, newWarnings, newMissiles]
 
-
     def manageAll(self):  # deletes and adds objects based on locations
         if time.time()-self.balance >= 150: chunkGeneration.resetStandards(self)
         if time.time()-self.beamBalance >= 50: chunkGeneration.resetFasts(self)
@@ -821,6 +829,18 @@ class MyApp(App):
                 50, True)  # instantly generates a missile
         elif event.key == '2': testCode.printData(self)
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
+
+    def sizeChanged(self):
+        self.scale = self.width/self.standardizedWidth
+        self.barY = (self.height//self.barPortion)
+        self.buttonSizes = (2*self.barY)//3
+        self.buttonSpacing = (self.barY-self.buttonSizes)//2
+        if self.width <= 400: self.buttonSizes = self.barY
+        self.trueHeight = self.height-self.barY
+        self.cellSize = self.width/self.cols
+        [self.dDrops, self.dCoins] = [False, True]
+        [self.coinSize, self.coinSpacing] = [16*self.scale, 4*self.scale]
+        self.restartApp()
 
     def redrawAll(self, canvas):
         self.drawSky(canvas)

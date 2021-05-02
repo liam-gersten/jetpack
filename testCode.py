@@ -3,11 +3,6 @@ import random, copy, time
 import matplotlib.pyplot as plt  # used only for testing purposes
 
 ######
-# Known Bugs:
-# - Size doesn't work well
-######
-
-######
 # Printer/Debugger code
 ######
 
