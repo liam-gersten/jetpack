@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt  # used only for testing purposes
 # - Timers continue during death and pause
 # - Beam locations change after slowed time
 # - Size doesn't work well
-# - Rare negative height error
 ######
 
 ######

@@ -136,7 +136,7 @@ def mergeSingleDistribution(difficulty, distribution, type):
     totalPossible = 0
     if type == 'missile': biasWeight = (3/4)+(difficulty/100)
     else: biasWeight = (3/4)+difficulty/200
-    biasWeight = 1
+    # biasWeight = 1
     newProportions = {}
     originalWeight = (1-biasWeight)*100
     biasWeight *= 100
@@ -189,13 +189,13 @@ def beamGenerator(app, chunk, upperBeamRange, x, difficulty):
                 beamChunk = tempBeams[i]
                 sizes = [len(beamChunk.literal), len(beamChunk.literal[0]),
                             beamChunk.row, beamChunk.col]
-                if types[i] == 'static': object = jetpack.staticBeam(app,
+                if types[i] == 'static': object = jetpack.StaticBeam(app,
                             sizes[0], sizes[1], sizes[2], sizes[3], x)
-                elif types[i] == 'vertical': object = jetpack.verticleBeam(app,
+                elif types[i] == 'vertical': object = jetpack.VerticalBeam(app,
                             sizes[0], sizes[1], sizes[2], sizes[3], x)
-                elif types[i] == 'horizontal': object = jetpack.horizontalBeam(
+                elif types[i] == 'horizontal': object = jetpack.HorizontalBeam(
                             app, sizes[0], sizes[1], sizes[2], sizes[3], x)
-                else: object = jetpack.rotatingBeam(app, sizes[0], sizes[1],
+                else: object = jetpack.RotatingBeam(app, sizes[0], sizes[1],
                             sizes[2], sizes[3], x)
                 app.beams += [object]
             return chunk
@@ -269,7 +269,7 @@ def difficultyWrapper(app, chunk, x):
     else: upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x, difficulty)
-    # if not app.powerUp: powerUpGenerator(app, chunk)
+    if not app.powerUp: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
 def generationManager(app, x): # makes blank 2D list to be called

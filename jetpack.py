@@ -59,6 +59,10 @@ def drawPowerUp(object, app, canvas):  # draws power ups of any type
         canvas.create_text(object.x+app.barY, object.y, fill=color,
                            text=timer, anchor='center', font=font)
 
+def pauseGame(app):
+    app.paused = not app.paused
+    for beam in app.beams: beam.freeze(app.paused)
+
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
         self.x = app.width/4
@@ -154,8 +158,7 @@ class Coin():  # spinning coin object
         return False
 
     def draw(self, app, canvas, debug, sequence, size):
-        if (app.staticTime) and (not self.special): coinId = 1
-        else: coinId = int((time.time()*10)%7)  # ranges 0 - 6
+        coinId = int((time.time()*10)%7)  # ranges 0 - 6
         if not self.special: image = app.getCachedPhotoImage(sequence[coinId])
         else:  # coin is in the top left of the menu bar
             if app.coinStart: sizeScale = \
@@ -167,7 +170,7 @@ class Coin():  # spinning coin object
         if debug: canvas.create_rectangle(self.x-(size/2), self.y-(size/2),
                 self.x+(size/2), self.y+(size/2), fill='')
 
-class staticBeam():  # does not move
+class StaticBeam():  # does not move
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.type = 'static'
         self.width = app.cellSize
@@ -194,7 +197,7 @@ class staticBeam():  # does not move
     def draw(self, app, canvas):
         drawBeam(app, canvas, self.x1, self.y1, self.x2, self.y2)
 
-class verticleBeam():  # moves vertically
+class VerticalBeam():  # moves vertically
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.type = 'vertical'
         self.width = app.cellSize
@@ -202,30 +205,38 @@ class verticleBeam():  # moves vertically
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
 
     def outOfBounds(self): return self.centerX+self.xScale+self.width < 0
 
+    def freeze(self, state):
+        if state: self.timeFrozen = time.time()
+        else: self.timePaused += (time.time()-self.timeFrozen)
+        self.frozen = state
+
     def interacts(self, app, player):
-        if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
-            app.staticTime-app.timeSincePaused)%1))
-        else: yPosition = self.yScale*math.cos(2*math.pi*(((
-            time.time()-app.timeSincePaused)/app.timeDilation)%1))
+        if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
+                                       app.timeInitial
+        else: timePosition = (time.time()-self.timePaused)-app.timeInitial
+        yPosition = self.yScale*math.cos(2*math.pi*((timePosition/
+                                        app.timeDilation)%1))
         pa = [self.centerX-self.xScale, self.centerY+yPosition]
         pb = [self.centerX+self.xScale, self.centerY+yPosition]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         [x1, x2] = [self.centerX-self.xScale, self.centerX+self.xScale]
-        if app.staticTime: yPosition = self.yScale*math.cos(2*math.pi*((
-                app.staticTime-app.timeSincePaused)%1)) # animation curve
-        else: yPosition = self.yScale*math.cos(2*math.pi*(((
-                time.time()-app.timeSincePaused)/app.timeDilation)%1))
+        if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
+                                       app.timeInitial
+        else: timePosition = (time.time()-self.timePaused)-app.timeInitial
+        yPosition = self.yScale*math.cos(2*math.pi*((timePosition/
+                                        app.timeDilation)%1))
         y = self.centerY+yPosition
         drawBeam(app, canvas, x1, y, x2, y)
 
-class horizontalBeam():  # moves horizontally
+class HorizontalBeam():  # moves horizontally
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.type = 'horizontal'
         self.width = app.cellSize
@@ -233,30 +244,38 @@ class horizontalBeam():  # moves horizontally
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
 
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
+    def freeze(self, state):
+        if state: self.timeFrozen = time.time()
+        else: self.timePaused += (time.time()-self.timeFrozen)
+        self.frozen = state
+
     def interacts(self, app, player):
-        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*(((
-                    app.staticTime-app.timeSincePaused)/app.timeDilation)%1))
-        else: xPosition = self.xScale*math.cos(2*math.pi* # animation curve
-                    (((time.time()-app.timeSincePaused)/app.timeDilation)%1))
+        if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
+                                       app.timeInitial
+        else: timePosition = (time.time()-self.timePaused)-app.timeInitial
+        xPosition = self.xScale*math.cos(2*math.pi* # animation curve
+                    ((timePosition/app.timeDilation)%1))
         pa = [self.centerX+xPosition, self.centerY-self.yScale]
         pb = [self.centerX+xPosition, self.centerY+self.yScale]
         return minDistance(pa, pb, [player.x, player.y]) <= (player.sizeX/2)
 
     def draw(self, app, canvas):
         [y1, y2] = [self.centerY-self.yScale, self.centerY+self.yScale]
-        if app.staticTime: xPosition = self.xScale*math.cos(2*math.pi*(((
-                    app.staticTime-app.timeSincePaused)/app.timeDilation)%1))
-        else: xPosition = self.xScale*math.cos(2*math.pi* # animation curve
-                    (((time.time()-app.timeSincePaused)/app.timeDilation)%1))
+        if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
+                                        app.timeInitial
+        else: timePosition = (time.time()-self.timePaused)-app.timeInitial
+        xPosition = self.xScale*math.cos(2*math.pi*  # animation curve
+                    ((timePosition/app.timeDilation)%1))
         x = self.centerX+xPosition
         drawBeam(app, canvas, x, y1, x, y2)
 
-class rotatingBeam():  # rotate left or right
+class RotatingBeam():  # rotate left or right
     def __init__(self, app, rows, cols, row, col, chunkX):
         self.type = 'rotating'
         self.width = app.cellSize
@@ -264,17 +283,26 @@ class rotatingBeam():  # rotate left or right
         self.yScale = self.width*(rows-1)/2
         self.centerX = chunkX+((col+(cols/2))*app.cellSize)
         self.xScale = self.width*(cols-1)/2
+        [self.frozen, self.timePaused] = [False, 0]
 
     def move(self, app): self.centerX -= app.speed
 
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
+    def freeze(self, state):
+        if state: self.timeFrozen = time.time()
+        else: self.timePaused += (time.time()-self.timeFrozen)
+        self.frozen = state
+
+    def getAngle(self, app):
+        if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
+                                        app.timeInitial
+        else: timePosition = (time.time()-self.timePaused)-app.timeInitial
+        timeStamp = 2*((timePosition/app.timeDilation)%1)
+        return math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
+
     def interacts(self, app, player): # animation curve below
-        if app.staticTime: timeStamp = 2*(((app.staticTime-app.timeSincePaused)
-                                           /app.timeDilation)%1)
-        else: timeStamp = 2*(((time.time()-app.timeSincePaused)/
-                              app.timeDilation)%1)
-        angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
+        angle = self.getAngle(app)
         [dy, dx] = [self.yScale*math.sin(angle),
                     self.yScale*math.cos(angle)]
         return minDistance([(self.centerX-dx), (self.centerY-dy)],
@@ -282,11 +310,7 @@ class rotatingBeam():  # rotate left or right
                (player.sizeX/2)
 
     def draw(self, app, canvas):  # animation curve below
-        if app.staticTime: timeStamp = 2*(((app.staticTime-app.timeSincePaused)
-                /app.timeDilation)%1)
-        else: timeStamp = 2*(((time.time()-app.timeSincePaused)/
-                              app.timeDilation)%1)
-        angle = math.pi+(math.pi*(math.cos((timeStamp*math.pi)/2)))
+        angle = self.getAngle(app)
         if almostEqual(angle, 2*math.pi): angle = 0
         [dy, dx] = [self.yScale*math.sin(angle), self.yScale*math.cos(angle)]
         [x1, y1, x2, y2] = [self.centerX-dx, self.centerY-dy,
@@ -566,9 +590,8 @@ class MyApp(App):
         self.loadSprites()
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
         [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
-        [self.downInitial, self.upInitial, self.timeSincePaused,
-         self.timeInitial] = [time.time()-1, time.time()-1, time.time()-1,
-                              time.time()+1]
+        [self.downInitial, self.upInitial, self.timeInitial] = [time.time()-1,
+                time.time()-1, time.time()+1]
         [self.timeDilation, self.invincible] = [1, False]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
@@ -617,8 +640,8 @@ class MyApp(App):
         self.timeSincePaused = time.time()
         self.staticTime = False
         self.points -= 100
-        # self.powerUps += [Invincibility(self, self.player.x-self.width,
-        #             self.player.y)]  # player has temporary invincibility
+        self.powerUps += [Invincibility(self, self.player.x-self.width,
+                    self.player.y)]  # player has temporary invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 
@@ -703,11 +726,7 @@ class MyApp(App):
                 ((self.barY-self.buttonSizes)/2):  # check for button click
             if (self.width-self.buttonSpacing-self.buttonSizes <= event.x <=
                 self.width-self.buttonSpacing) and (not self.gameOver):
-                self.paused = not self.paused
-                if self.paused: self.staticTime = time.time()+0
-                else:
-                    self.timeSincePaused = time.time()
-                    self.staticTime = False
+                pauseGame(self)
             if self.width-(2*(self.buttonSpacing+self.buttonSizes)) <= event.x \
                     <= self.width-(2*self.buttonSpacing)-self.buttonSizes:
                 self.restartApp()
@@ -715,11 +734,7 @@ class MyApp(App):
                     <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes)) \
                     and (not self.gameOver):
                 self.settingsOpen = not self.settingsOpen
-                self.paused = not self.paused
-                if self.paused: self.staticTime = time.time()+0
-                else:
-                    self.timeSincePaused = time.time()
-                    self.staticTime = False
+                pauseGame(self)
         elif (not self.player.up) and (not self.paused):  # falling
             [self.player.airborne, self.player.up] = [True, True]
             [self.player.sizeX, self.player.sizeY] = [35*self.scale,
@@ -738,8 +753,8 @@ class MyApp(App):
         elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
         elif (event.key.lower() == 'left') and (self.difficultyBase-
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
-        # elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
-        #                 self.player.x-self.width, self.player.y)]
+        elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
+                        self.player.x-self.width, self.player.y)]
         elif event.key.lower() == 'p': testCode.printer(self)
         elif event.key.lower() == 'c': self.points += 500
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
