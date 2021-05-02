@@ -751,9 +751,11 @@ class MyApp(App):
         for coin in self.coins:
             if coin.x > (-self.coinSize): newCoins += [coin]
         for power in self.powerUps:
-            if self.powerUp and power.active and (not power.manage(self)):
+            if self.powerUp:
+                if power.active and (not power.manage(self)):
+                    newPowerUps += [power]
+            elif not power.manage(self):
                 newPowerUps += [power]
-            elif not power.manage(self): newPowerUps += [power]
         if self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]
@@ -774,6 +776,21 @@ class MyApp(App):
         for missile in self.missiles: missile.move(self)
         self.manageAll()
 
+    def getDifficultyBoxes(self):
+        [boxes, midX] = [[], (self.width*7)/8]
+        [xSpan, ySpan] = [self.width/9, (self.trueHeight/25)]
+        for i in range(2, 5):
+            y = self.barY+((i*self.trueHeight)/10)
+            boxes += [[midX-xSpan, y-ySpan, midX+xSpan, y+ySpan]]
+        return boxes+[['Easy', 'Medium', 'Hard'], ['green', 'yellow', 'red']]
+
+    def clickSettings(self, eventX, eventY):
+        boxes = self.getDifficultyBoxes()
+        if not (boxes[0][0] <= eventX <= boxes[0][2]): return None
+        for i in range(3):
+            box = boxes[i]
+            if box[1] <= eventY <= box[3]: self.difficulty = boxes[3][i].lower()
+
     def timerFired(self):
         if self.gameOver and (self.killY > (self.trueHeight/2)+self.barY):
             self.killY -= 10*self.scale  # moves game over screen
@@ -785,6 +802,7 @@ class MyApp(App):
                     (self.scale*10*math.log(time.time()-self.downInitial+1)))
 
     def mousePressed(self, event):
+        if self.settingsOpen: self.clickSettings(event.x, event.y)
         if (self.points >= 100) and (self.gameOver):  # check for respawn click
             box = [self.killX-self.respawnSizeX, self.killY-self.respawnSizeY,
                     self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
@@ -948,9 +966,20 @@ class MyApp(App):
     def drawSettings(self, canvas):
         canvas.create_rectangle(self.width-(self.width/4), self.barY,
                 self.width, self.barY+(self.trueHeight/2), fill='darkgrey')
-        canvas.create_line(self.width-(self.width/4),
-            self.barY+(self.trueHeight/4), self.width,
-            self.barY+(self.trueHeight/4))
+        fontSize = 24*(self.width//self.standardizedWidth)
+        font = 'Times', str(fontSize), 'bold'
+        midX = (self.width*7)/8
+        canvas.create_text(midX, self.barY+(self.trueHeight/10), fill='black',
+            anchor='center',  text='Difficulty:', font=font)
+        boxes = self.getDifficultyBoxes()
+        for i in range(3):
+            box = boxes[i]
+            if boxes[3][i].lower() == self.difficulty: canvas.create_rectangle(
+            self.width-(self.width/4), box[1], self.width, box[3], fill='white')
+            canvas.create_rectangle(box[0], box[1], box[2], box[3], fill='grey')
+            canvas.create_text(midX, box[1]+((box[3]-box[1])/2), font=font,
+                fill=boxes[4][i], activefill='black', anchor='center',
+                text=boxes[3][i])
 
     def drawSky(self, canvas):
         canvas.create_rectangle(0, 0, self.width, self.height,
