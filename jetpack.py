@@ -40,7 +40,7 @@ def managePowerUp(object, app):  # manages power ups of any type
         object.x -= app.speed
         if math.sqrt(((object.x-app.player.x)**2)+((object.y-app.player.y)**2))\
                 <= (app.player.sizeX): object.activate(app)
-    elif time.time()-object.timeInitial >= 15:
+    elif time.time()-object.timeInitial >= object.timeLength:
         object.deactivate(app)
         return True
     return False
@@ -52,7 +52,9 @@ def drawPowerUp(object, app, canvas):  # draws power ups of any type
     canvas.create_image(object.x, object.y+yChange,
                         image=ImageTk.PhotoImage(object.sprite))
     if object.active:
-        timer = int(15-(time.time()-object.timeInitial))
+        if object.frozen: timer = int(object.timeLength-(object.timePaused-
+                                                         object.timeInitial))
+        else: timer = int(object.timeLength-(time.time()-object.timeInitial))
         if timer <= 5: color = 'red'
         else: color = 'black'
         font = 'Times', str(int(24*app.scale)), 'bold italic'
@@ -61,7 +63,13 @@ def drawPowerUp(object, app, canvas):  # draws power ups of any type
 
 def pauseGame(app):
     app.paused = not app.paused
-    for beam in app.beams: beam.freeze(app.paused)
+    if app.paused: app.timePaused = time.time()
+    else: app.pausedTime += (time.time()-app.timePaused)
+    for warning in app.warnings: warning.freeze(app.paused)
+    for beam in app.beams:
+        if beam.type != 'static': beam.freeze(app.paused)
+    for powerUp in app.powerUps:
+        if powerUp.active: powerUp.freeze(app.paused)
 
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
@@ -360,9 +368,16 @@ class Exclamation():  # exclamation point that appears before and makes missiles
         self.y = y
         self.waitTime = waitTime  # depends on difficulty
         self.startMissileWait = time.time()
+        self.frozen = False
+
+    def freeze(self, state):
+        if state: self.timePaused = time.time()
+        else: self.waitTime += (time.time()-self.timePaused)
+        self.frozen = state
 
     def createMissile(self, app):
-        if time.time()-self.startMissileWait >= self.waitTime:
+        if (not self.frozen) and (time.time()-self.startMissileWait >=
+                                  self.waitTime):
             app.missiles += [Missile(app, self.y)]
             return True
         return False
@@ -376,14 +391,20 @@ class Exclamation():  # exclamation point that appears before and makes missiles
 
 class Booster():  # rocket fuel power up
     def __init__(self, app, x, y):
-        [self.x, self.y] = [app.width + x, y]
-        self.active = False  # waiting on the board
+        [self.x, self.y] = [app.width+x, y]
+        [self.active, self.frozen] = [False, False]  # waiting on the board
         self.priorSpeed = app.speed
         self.sprite = app.gas
+        self.timeLength = 10
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
             self.activate(app)
+
+    def freeze(self, state):
+        if state: self.timePaused = time.time()
+        else: self.timeLength += (time.time()-self.timePaused)
+        self.frozen = state
 
     def activate(self, app):
         [self.active, app.powerUp] = [True, True]
@@ -395,7 +416,7 @@ class Booster():  # rocket fuel power up
     def manage(self, app):
         if self.active:
             timeSinceStart = time.time()-self.timeInitial
-            inflationScale = math.sin(math.pi*timeSinceStart/15)
+            inflationScale = math.sin(math.pi*timeSinceStart/self.timeLength)
             app.speed = self.priorSpeed+(inflationScale*app.speed*4)
         return managePowerUp(self, app)
 
@@ -411,12 +432,18 @@ class Booster():  # rocket fuel power up
 class Invincibility():  # heart power up
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
-        self.active = False  # waiting on the board
+        [self.active, self.frozen] = [False, False]  # waiting on the board
         self.sprite = app.heart
+        self.timeLength = 10
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
             self.activate(app)
+
+    def freeze(self, state):
+        if state: self.timePaused = time.time()
+        else: self.timeLength += (time.time()-self.timePaused)
+        self.frozen = state
 
     def activate(self, app):
         [self.active, app.powerUp] = [True, True]
@@ -441,12 +468,18 @@ class Invincibility():  # heart power up
 class TimeSlower():  # power up that slows down time
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
-        self.active = False
+        [self.active, self.frozen] = [False, False]
         self.sprite = app.clockCircle
+        self.timeLength = 15
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
             self.activate(app)
+
+    def freeze(self, state):
+        if state: self.timePaused = time.time()
+        else: self.timeLength += (time.time()-self.timePaused)
+        self.frozen = state
 
     def activate(self, app):
         [self.active, app.powerUp] = [True, True]
@@ -508,7 +541,7 @@ class MyApp(App):
         [self._mvcCheck, self.invincible] = [True, True]
         [self.rows, self.cols, self.points] = [20, 40, 0]
         [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 0, 5]
-        self.pathfinderStall = 0.5
+        [self.pathfinderStall, self.usePowerUps] = [0.5, True]
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
         [self.barPortion, self.standardizedWidth] = [9, 800]
         self.scale = self.width/self.standardizedWidth
@@ -589,9 +622,9 @@ class MyApp(App):
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
-        [self.coinStart, self.staticTime, self.gameOver] = [False, False, False]
-        [self.downInitial, self.upInitial, self.timeInitial] = [time.time()-1,
-                time.time()-1, time.time()+1]
+        [self.coinStart, self.gameOver] = [False, False]
+        [self.downInitial, self.upInitial, self.timeInitial, self.pausedTime] =\
+            [time.time()-1, time.time()-1, time.time()+1, 0]
         [self.timeDilation, self.invincible] = [1, False]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
@@ -625,8 +658,8 @@ class MyApp(App):
         self.TOD = time.time()
 
     def killAll(self):  # puts game in gameOver state but does not reset
-        [self.gameOver, self.paused] = [True, True]
-        self.staticTime = time.time()+0
+        self.gameOver = True
+        pauseGame(self)
         self.deaths += 1
         [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
         [self.miniXSize, self.miniYSize] = [(9*self.killXSize)/10,
@@ -636,12 +669,11 @@ class MyApp(App):
                                                   self.killYSize/3]
 
     def respawn(self):
-        [self.gameOver, self.paused] = [False, False]
-        self.timeSincePaused = time.time()
-        self.staticTime = False
+        self.gameOver = False
+        pauseGame(self)
         self.points -= 100
-        self.powerUps += [Invincibility(self, self.player.x-self.width,
-                    self.player.y)]  # player has temporary invincibility
+        if self.usePowerUps: self.powerUps += [Invincibility(self,
+            self.player.x-self.width, self.player.y)]  # temp invincibility
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 
@@ -727,6 +759,7 @@ class MyApp(App):
             if (self.width-self.buttonSpacing-self.buttonSizes <= event.x <=
                 self.width-self.buttonSpacing) and (not self.gameOver):
                 pauseGame(self)
+                if self.settingsOpen: self.settingsOpen = False
             if self.width-(2*(self.buttonSpacing+self.buttonSizes)) <= event.x \
                     <= self.width-(2*self.buttonSpacing)-self.buttonSizes:
                 self.restartApp()
@@ -734,7 +767,7 @@ class MyApp(App):
                     <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes)) \
                     and (not self.gameOver):
                 self.settingsOpen = not self.settingsOpen
-                pauseGame(self)
+                if not self.paused: pauseGame(self)
         elif (not self.player.up) and (not self.paused):  # falling
             [self.player.airborne, self.player.up] = [True, True]
             [self.player.sizeX, self.player.sizeY] = [35*self.scale,
@@ -753,10 +786,9 @@ class MyApp(App):
         elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
         elif (event.key.lower() == 'left') and (self.difficultyBase-
                         self.diffInc > 0): self.difficultyBase -= self.diffInc
-        elif event.key.lower() == 'i': self.powerUps += [Invincibility(self,
-                        self.player.x-self.width, self.player.y)]
+        elif event.key.lower() == 'i': self.usePowerUps = not self.usePowerUps
         elif event.key.lower() == 'p': testCode.printer(self)
-        elif event.key.lower() == 'c': self.points += 500
+        elif event.key.lower() == 'c': self.points += 1000
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
         elif event.key == '2': testCode.printData(self)

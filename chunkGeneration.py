@@ -258,7 +258,7 @@ def getDifficulty(app):
                         'medium': {'c0': 1/60, 'c1': 1/500, 'c2': 0},
                         'hard': {'c0': 1/60, 'c1': 1/500, 'c2': 25}}
     curve = difficultyCurves[app.difficulty]
-    return ((time.time()-app.timeInitial)*curve['c0'])+\
+    return ((time.time()-app.timeInitial-app.pausedTime)*curve['c0'])+\
            (int(app.currentRun//100)*curve['c1'])+app.deaths+curve['c2']
 
 # gets upperBeamRange from curves of time and difficulty value
@@ -269,7 +269,7 @@ def difficultyWrapper(app, chunk, x):
     else: upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
     chunk = beamGenerator(app, chunk, upperBeamRange, x, difficulty)
-    if not app.powerUp: powerUpGenerator(app, chunk)
+    if (not app.powerUp) and app.usePowerUps: powerUpGenerator(app, chunk)
     return coinGenerator(app, chunk, x)
 
 def generationManager(app, x): # makes blank 2D list to be called
