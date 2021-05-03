@@ -651,12 +651,12 @@ class JetpackScotty(App):
         for imageKey in self.scottyImages: self.scottyImages[imageKey] = \
                 self.scaleImage(self.scottyImages[imageKey], self.scale)
         dropImage = self.scaleImage(self.loadImage('sprites/cohon0.tiff'),
-                                    2.3*self.scale)
+                                    2*self.scale)
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
         self.dropImages[2] = self.scaleImage(
-            self.loadImage('sprites/cohon1.png'), 2.3*self.scale)
+            self.loadImage('sprites/cohon1.png'), 2*self.scale)
         for i in range(17): self.igniteImages[i/10] = self.scaleImage(
             self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
         self.igniteImages[1.7] = self.igniteImages[1.5].\

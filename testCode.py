@@ -1,6 +1,5 @@
 import chunkGeneration
-import random, copy, time
-import matplotlib.pyplot as plt  # used only for testing purposes
+import random, copy
 
 ######
 # Printer/Debugger code
@@ -43,11 +42,6 @@ def printer(app):  # prints new and current chunks
         print('\n**newChunk**')
         print(app.newChunk.x)
         for row in app.newChunk.literal: print(row)
-
-def histogram(list1, list2, color):
-    n, bins, patches = plt.hist(list1, len(list1), facecolor=color)
-    if list2: n, bins, patches = plt.hist(list2, len(list2), facecolor='red')
-    plt.show()
 
 def outlineScotty(object, canvas):  # displays the hitbox for scotty
     canvas.create_rectangle(object.x-(object.sizeX/2), object.y-
@@ -116,74 +110,3 @@ def generator(rows, cols, upperBeamRange):
         row = ['' for col in range(cols)]
         bareChunk += [row]
     return difficultyWrapper(bareChunk, rows, cols, upperBeamRange)
-
-######
-# Pathfinder test Code
-######
-
-def displayResults(outerV1, outerV2, v1Pairs, v2Pairs):
-    histogram(outerV1, outerV2, 'blue')
-    for listColor in [[v1Pairs, 'blue'], [v2Pairs, 'red']]:
-        [x, y] = [[], []]
-        for pair in listColor[0]:
-            x.append(pair[0])
-            y.append(pair[1])
-        plt.scatter(x, y, c=listColor[1])
-    plt.show()
-
-def testAlgorithms(trials, variations, rows, cols, app):
-    [outerV1, outerV2] = [[], []]
-    [v1Pairs, v2Pairs] = [[], []]
-    for version in range(1, 3):
-        for i in range(variations):
-            for upperBeamRange in range(2, 12):
-                [v1, v2] = [[], []]
-                for trial in range(trials):
-                    chunk = generator(rows, cols, upperBeamRange)
-                    timeInitial = time.time()+0
-                    value = chunkGeneration.conversionWrapper(app, chunk)
-                    timeCompleted = time.time()-timeInitial
-                    if version == 1:
-                        v1.append(timeCompleted)
-                        outerV1.append(timeCompleted)
-                    else:
-                        v2.append(timeCompleted)
-                        outerV2.append(timeCompleted)
-                if version == 1:
-                    v1Pairs.append([upperBeamRange, sum(v1)/len(v1)])
-                else: v2Pairs.append([upperBeamRange, sum(v2)/len(v2)])
-    histogram(outerV1, False, 'blue')
-    histogram(outerV1, False, 'red')
-    displayResults(outerV1, outerV2, v1Pairs, v2Pairs)
-
-def runTests():
-    [trials, variations] = [50, 2]
-    [rows, cols] = [20, 40]
-    app = DummyApp(rows, cols)
-    testAlgorithms(trials, variations, rows, cols, app)
-
-######
-# Dead code (used for reference)
-######
-
-def pathFinder2(app, chunk):  # pathfinder2's wrapper
-    for startRow in range(0, app.rows-1, 2):
-        if nonGuidedHalfPoint(app, chunk, startRow, 0): return True
-    return False
-
-def memorizeHP(searcher): # cache helper for nonGuidedHalfPoint
-    import functools
-    cachedResults = dict()
-    @functools.wraps(searcher)
-    def wrapper(*args):
-        if str(args) not in cachedResults:
-            cachedResults[str(args)] = searcher(*args)
-        return cachedResults[str(args)]
-    return wrapper
-
-@memorizeHP
-def nonGuidedHalfPoint(app, chunk, row, col):
-    pass
-
-if (__name__ == '__main__'):
-    runTests()
