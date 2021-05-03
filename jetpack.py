@@ -75,7 +75,7 @@ def pauseGame(app):
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
         self.x = app.width/4
-        self.y = 427*app.scale
+        self.y = 427*app.scaleY
         [self.sizeX, self.sizeY] = [52*app.scale, 36*app.scale]
         [self.up, self.airborne, self.fireStart] = [False, False, False]
         self.freezeFactor = 1
@@ -138,9 +138,10 @@ class BackDrop():  # single sprite of Cohon University Center
         self.type = type
         if self.type != 2:
             if x: self.x = x
-            else: self.x = app.dropImages[2].size[0]+(app.dropSize[0]/2)+\
-                         (index*app.dropSize[0])
-            self.y = app.height-(app.dropSize[1]/2)
+            elif not app.start: self.x = app.dropImages[2].size[0]+\
+                (app.dropSize[0]/2)+(index*app.dropSize[0])
+            else: self.x = (app.dropSize[0]/2)+(index*app.dropSize[0])
+            self.y = app.height-(app.dropSize[1]/2)+app.dropY
             self.key = random.choice([0, 1])
             self.image = app.getCachedPhotoImage(app.dropImages[self.key])
         else:
@@ -440,7 +441,7 @@ class Booster():  # rocket fuel power up
         self.frozen = state
 
     def activate(self, app):
-        [self.active, app.powerUp, app.dDrops] = [True, True, False]
+        [self.active, app.powerUp, self.called] = [True, True, False]
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
         [app.invincible, app.missiles, app.lazyGeneration] = [True, [], True]
@@ -451,13 +452,25 @@ class Booster():  # rocket fuel power up
             timeSinceStart = time.time()-self.timeInitial
             inflationScale = math.sin(math.pi*timeSinceStart/self.timeLength)
             app.speed = self.priorSpeed+(inflationScale*app.speed*4)
+            if 8 <= (self.timeLength-(time.time()-self.timeInitial)) <= 10:
+                app.dropY += 5*app.scale
+            elif 1 < (self.timeLength-(time.time()-self.timeInitial)) < 8:
+                app.dDrops = False
+            elif 0 <= (self.timeLength-(time.time()-self.timeInitial)) <= 1:
+                if not self.called:
+                    for i in range((app.width//app.dropSize[0])+2):
+                        app.drops += [BackDrop(app, i, False, 1)]
+                    self.called = True
+                app.dDrops = True
+                app.dropY -= 10*app.scale
+            elif self.timeLength-(time.time()-self.timeInitial) < 0:
+                app.dropY = 0
+            for drop in app.drops:
+                drop.y = app.height-(app.dropSize[1]/2)+app.dropY
         return managePowerUp(self, app)
 
     def deactivate(self, app):
-        [app.invincible, app.powerUp, app.dDrops] = [False, False, True]
-        app.drops = []
-        for i in range((app.width//app.dropSize[0])+2):
-            app.drops += [BackDrop(app, i, False, 1)]
+        [app.invincible, app.powerUp, app.dropY] = [False, False, 0]
         app.lazyGeneration = False
         app.speed = self.priorSpeed
         app.player.freezeFactor = 1
@@ -577,27 +590,25 @@ class Chunk():  # 2D list includes locations of coins/obstacles
             self.literal = chunkGeneration.generationManager(app, x)
             self.x = x
 
-class MyApp(App):
+class JetpackScotty(App):
     def appStarted(self):
         self.speedDifference = 3
-        [self._mvcCheck, self.invincible] = [True, True]
         [self.rows, self.cols, self.points] = [20, 40, 0]
-        [self.difficulty, self.difficultyBase, self.diffInc] = ['medium', 0, 5]
+        [self.difficulty, self.diffInc] = ['medium', 5]
         [self.pathfinderStall, self.usePowerUps] = [0.5, True]
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
         [self.barPortion, self.standardizedWidth] = [9, 800]
-        self.scale = self.width/self.standardizedWidth
+        [self.standardizedHeight, self.missileMultiplier] = [400, 2.5]
         self.barY = (self.height//self.barPortion)
         self.buttonSizes = (2*self.barY)//3
+        self.scale = self.width/self.standardizedWidth
         self.buttonSpacing = (self.barY-self.buttonSizes)//2
         if self.width <= 400: self.buttonSizes = self.barY
         self.trueHeight = self.height-self.barY
-        self.cellSize = self.width/self.cols
-        [self.dDrops, self.dCoins, self.lazyGeneration] = [True, True, False]
-        [self.timerDelay, self.coinSize, self.coinSpacing] = \
-            [1, 16*self.scale, 4*self.scale]
+        self.scaleY = self.trueHeight/self.standardizedHeight
+        [self.timerDelay, self.coinSize, self.coinSpacing, self.cellSize] = \
+            [1, 16*self.scale, 4*self.scale, self.width/self.cols]
         [self.dropMultiplier, self.cloudMultiplier] = [1.25, 2]
-        self.missileMultiplier = 2.5
         self.restartApp()
 
     def loadIndividualSprites(self):  # for distinct sprites
@@ -640,12 +651,12 @@ class MyApp(App):
         for imageKey in self.scottyImages: self.scottyImages[imageKey] = \
                 self.scaleImage(self.scottyImages[imageKey], self.scale)
         dropImage = self.scaleImage(self.loadImage('sprites/cohon0.tiff'),
-                                    2*self.scale)
+                                    2.3*self.scale)
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
         self.dropImages[2] = self.scaleImage(
-            self.loadImage('sprites/cohon1.png'), 2*self.scale)
+            self.loadImage('sprites/cohon1.png'), 2.3*self.scale)
         for i in range(17): self.igniteImages[i/10] = self.scaleImage(
             self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
         self.igniteImages[1.7] = self.igniteImages[1.5].\
@@ -666,25 +677,31 @@ class MyApp(App):
         chunkGeneration.resetLongs(self)
         chunkGeneration.resetStandards(self)
         chunkGeneration.resetFasts(self)
+        [self.dDrops, self.dCoins, self.lazyGeneration] = [True, True, False]
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
         [self.currentRun, self.lazyGeneration, self.deaths] = [0, False, 0]
         [self.debug, self.paused, self.settingsOpen] = [False, False, True]
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
-        [self.movement, self.speed] = [10*self.scale, 2*self.scale]
-        [self.coinStart, self.gameOver] = [False, False]
+        [self.movement, self.difficultyBase] = [10*self.scale, 0]
+        [self.coinStart, self.gameOver, self.dropY] = [False, False, 0]
         [self.downInitial, self.upInitial, self.timeInitial, self.pausedTime] =\
             [time.time()-1, time.time()-1, time.time()+1, 0]
         [self.timeDilation, self.invincible, self.start] = [1, False, False]
+        self.changeSpeedGraphics(draw=self.dDrops)
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
          self.warnings, self.powerUps] = [[], [], [], [], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
         self.currentChunk = Chunk(self, False, self.width)
-        [self.firstChunk, self.explosionX] = [False, False]
+        [self.firstChunk, self.explosionX, self.highlight] = \
+            [False, False, False]
         self.newChunk = Chunk(self, False, 2*self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
         self.dropSetup()
+
+    def getQuitMessage(self):
+        return '\n*** Closing Jetpack Scotty. I hope you enjoyed! ***\n'
 
     def dropSetup(self):
         self.drops += [BackDrop(self, False, False, 2)]
@@ -715,12 +732,20 @@ class MyApp(App):
         self.gameOver = True
         pauseGame(self)
         self.deaths += 1
+        newPowerUps = []
         [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
         [self.miniXSize, self.miniYSize] = [(9*self.killXSize)/10,
                                             (9*self.killYSize)/10]
         [self.killX, self.killY] = [self.width/2, self.height+self.killYSize]
         [self.respawnSizeX, self.respawnSizeY] = [self.killXSize/3,
                                                   self.killYSize/3]
+        if self.powerUp:
+            for power in self.powerUps:
+                if power.active: power.timeLength = 0
+            for power in self.powerUps:
+                if not power.active and (not power.manage(self)):
+                    newPowerUps += [power]
+            self.powerUps = newPowerUps
 
     def respawn(self):
         self.gameOver = False
@@ -800,6 +825,14 @@ class MyApp(App):
         for missile in self.missiles: missile.move(self)
         self.manageAll()
 
+    def changeSpeedGraphics(self, draw=None):
+        if draw == True: self.dDrops = True
+        elif draw == False: self.dDrops = False
+        difficulty = chunkGeneration.getDifficulty(self)+self.difficultyBase
+        if self.dDrops: self.speed = self.speedDifference*self.scale*(2+
+                            (difficulty/10))/self.timeDilation
+        else: self.speed = self.scale*(2+(difficulty/10))/self.timeDilation
+
     def getDifficultyBoxes(self):
         [boxes, midX] = [[], (self.width*7)/8]
         [xSpan, ySpan] = [self.width/9, (self.trueHeight/25)]
@@ -808,20 +841,23 @@ class MyApp(App):
             boxes += [[midX-xSpan, y-ySpan, midX+xSpan, y+ySpan]]
         return boxes+[['Easy', 'Medium', 'Hard'], ['green', 'yellow', 'red']]
 
-    def clickSettings(self, eventX, eventY):
+    def clickSettings(self, eventX, eventY, click):
         boxes = self.getDifficultyBoxes()
+        self.highlight = False
         if not (boxes[0][0] <= eventX <= boxes[0][2]): return None
         for i in range(3):
             box = boxes[i]
             if box[1] <= eventY <= box[3]:
-                self.difficulty = boxes[3][i].lower()
-                if not self.start:
-                    [self.start, self.settingsOpen] = [True, False]
-                    difficulty = chunkGeneration.getDifficulty(self)
-                    if self.dDrops: self.speed = self.speedDifference*\
-                        self.scale*(2+(difficulty/10))/self.timeDilation
-                    else: self.speed = self.scale*(2+(difficulty/10))/\
-                                       self.timeDilation
+                if not click: self.highlight = box
+                else:
+                    self.difficulty = boxes[3][i].lower()
+                    if not self.start:
+                        [self.start, self.settingsOpen] = [True, False]
+                        self.changeSpeedGraphics()
+
+    def mouseMoved(self, event):
+        if self.settingsOpen: self.clickSettings(event.x, event.y, False)
+        else: self.hilight = False
 
     def timerFired(self):
         if self.start:
@@ -843,7 +879,7 @@ class MyApp(App):
             for cloud in self.clouds: cloud.move(self)
 
     def mousePressed(self, event):
-        if self.settingsOpen: self.clickSettings(event.x, event.y)
+        if self.settingsOpen: self.clickSettings(event.x, event.y, True)
         if (self.points >= 100) and (self.gameOver):  # check for respawn click
             box = [self.killX-self.respawnSizeX, self.killY-self.respawnSizeY,
                     self.killX+self.respawnSizeX, self.killY+self.respawnSizeY]
@@ -876,29 +912,33 @@ class MyApp(App):
 
     def keyPressed(self, event):
         if event.key.lower() == 'd': self.debug = not self.debug
-        elif event.key.lower() == 'up': self.speed += 1
-        elif event.key.lower() == 'down': self.speed -= 1
-        elif event.key.lower() == 'right': self.difficultyBase += self.diffInc
+        elif event.key.lower() == 'right':
+            self.difficultyBase += self.diffInc
+            self.changeSpeedGraphics()
         elif (event.key.lower() == 'left') and (self.difficultyBase-
-                        self.diffInc > 0): self.difficultyBase -= self.diffInc
+                        self.diffInc > 0):
+            self.difficultyBase -= self.diffInc
+            self.changeSpeedGraphics()
         elif event.key.lower() == 'i': self.usePowerUps = not self.usePowerUps
         elif event.key.lower() == 'p': testCode.printer(self)
         elif event.key.lower() == 'c': self.points += 1000
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
-        elif event.key.lower() == 's': self.start = True
-        elif event.key == '2': testCode.printData(self)
-        elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
+        elif event.key.lower() == 'g':
+            if self.dDrops: self.changeSpeedGraphics(draw=False)
+            else: self.changeSpeedGraphics(draw=True)
+        elif event.key.lower == 't': testCode.printData(self)
 
     def sizeChanged(self):
         self.scale = self.width/self.standardizedWidth
+        self.standardizedHeight = 400
         self.barY = (self.height//self.barPortion)
         self.buttonSizes = (2*self.barY)//3
         self.buttonSpacing = (self.barY-self.buttonSizes)//2
         if self.width <= 400: self.buttonSizes = self.barY
         self.trueHeight = self.height-self.barY
+        self.scaleY = self.trueHeight/self.standardizedHeight
         self.cellSize = self.width/self.cols
-        [self.dDrops, self.dCoins] = [False, True]
         [self.coinSize, self.coinSpacing] = [16*self.scale, 4*self.scale]
         self.restartApp()
 
@@ -933,7 +973,7 @@ class MyApp(App):
         canvas.create_rectangle((self.width/3)-((self.width*2)/9),
             y-(self.trueHeight/7), (self.width/3)+((self.width*2)/9),
                             y+(self.trueHeight/7), fill='darkgrey')
-        fontSize = 45*(self.width//self.standardizedWidth)
+        fontSize = int(45*self.scale)
         font = 'Arial', str(fontSize), 'bold'
         canvas.create_text(self.width/3, y, fill='maroon', anchor='center',
             text='Jetpack Scotty', font=font, activefill='black')
@@ -991,7 +1031,7 @@ class MyApp(App):
 
     def drawCurrentRun(self, canvas):  # current run/high score with distance
         xPosition = self.width/2
-        fontSize = 24*(self.width//self.standardizedWidth)
+        fontSize = int(24*self.scale)
         font = 'Times', str(fontSize), 'bold'
         if self.currentRun >= self.longestRun:
             text = 'High Score! '+str(int(self.currentRun//100))+'m'
@@ -1025,7 +1065,7 @@ class MyApp(App):
     def drawSettings(self, canvas):
         canvas.create_rectangle(self.width-(self.width/4), self.barY,
                 self.width, self.barY+(self.trueHeight/2), fill='darkgrey')
-        fontSize = 24*(self.width//self.standardizedWidth)
+        fontSize = int(24*self.scale)
         font = 'Times', str(fontSize), 'bold'
         midX = (self.width*7)/8
         canvas.create_text(midX, self.barY+(self.trueHeight/10), fill='black',
@@ -1033,12 +1073,17 @@ class MyApp(App):
         boxes = self.getDifficultyBoxes()
         for i in range(3):
             box = boxes[i]
-            if (boxes[3][i].lower() == self.difficulty) and self.start:
-                canvas.create_rectangle(self.width-(self.width/4), box[1],
-                                    self.width, box[3], fill='white')
+            if (boxes[3][i].lower() == self.difficulty) and self.start and \
+                    (not self.highlight): canvas.create_rectangle(self.width-
+                    (self.width/4), box[1], self.width, box[3], fill='white')
             canvas.create_rectangle(box[0], box[1], box[2], box[3], fill='grey')
+            if self.highlight and (self.highlight == box) and (not self.start):
+                canvas.create_rectangle(box[0], box[1], box[2], box[3],
+                                        fill='white')
+                textFill = 'black'
+            else: textFill = boxes[4][i]
             canvas.create_text(midX, box[1]+((box[3]-box[1])/2), font=font,
-                fill=boxes[4][i], activefill='black', anchor='center',
+                fill=textFill, activefill='black', anchor='center',
                 text=boxes[3][i])
 
     def drawSky(self, canvas):
@@ -1047,4 +1092,4 @@ class MyApp(App):
         for cloud in self.clouds: cloud.draw(canvas)
 
 if __name__ == '__main__':
-    MyApp(width=800, height=450)
+    JetpackScotty(width=800, height=450)

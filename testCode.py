@@ -3,11 +3,6 @@ import random, copy, time
 import matplotlib.pyplot as plt  # used only for testing purposes
 
 ######
-# Dying with an active power up
-# Resizing with dDrops on
-######
-
-######
 # Printer/Debugger code
 ######
 
@@ -59,14 +54,8 @@ def outlineScotty(object, canvas):  # displays the hitbox for scotty
         (object.sizeY/2), object.x+(object.sizeX/2), object.y+(object.sizeY/2),
                             fill='')
 
-def tp1ReadMe():  # instructions as of tp1
-    print('\n**Instructions**\n')
-    print('Hold mouse/touchpad to make Scotty fly')
-    print('Use the arrow keys to increase/decrease game speed')
-    print('Pressing R restarts the game')
-    print('Pressing P pauses the game (some animations persist)')
-    print('Pressing D activates debugger mode')
-    print('Pressing C prints object information and lists')
+def tp3ReadMe():  # instructions as of tp1
+    pass
 
 ######
 # bareGenerator code

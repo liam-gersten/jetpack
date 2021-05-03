@@ -136,7 +136,6 @@ def mergeSingleDistribution(difficulty, distribution, type):
     totalPossible = 0
     if type == 'missile': biasWeight = (3/4)+(difficulty/100)
     else: biasWeight = (3/4)+difficulty/200
-    # biasWeight = 1
     newProportions = {}
     originalWeight = (1-biasWeight)*100
     biasWeight *= 100
@@ -267,6 +266,8 @@ def difficultyWrapper(app, chunk, x):
     if app.dDrops: app.speed = app.speedDifference*\
         app.scale*(2+(difficulty/10))/app.timeDilation
     else: app.speed = app.scale*(2+(difficulty/10))/app.timeDilation
+    if (app.speed > 50*app.scale) and (not app.powerUp):
+        app.changeSpeedGraphics(draw=False)
     if app.lazyGeneration: upperBeamRange = 3
     else: upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
