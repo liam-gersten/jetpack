@@ -75,9 +75,9 @@ def pauseGame(app):
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
         self.x = app.width/4
-        self.y = app.height-(100*app.scale)
-        [self.sizeX, self.sizeY] = [35*app.scale, 46*app.scale]
-        [self.up, self.airborne, self.fireStart] = [False, True, False]
+        self.y = 427*app.scale
+        [self.sizeX, self.sizeY] = [52*app.scale, 36*app.scale]
+        [self.up, self.airborne, self.fireStart] = [False, False, False]
         self.freezeFactor = 1
         self.images = images
         self.igniteImages = igniteImages
@@ -104,7 +104,7 @@ class Scotty():  # class for player
 
     def draw(self, app, canvas, debug):
         if (self.airborne or self.up): key = -1
-        elif app.paused: key = 0
+        elif app.paused or (not app.start): key = 0
         else: key = int((time.time()*7*(app.speed/5))%3)  # ignite 1-15
         image = ImageTk.PhotoImage(self.images[key])
         if self.freezeFactor != 1: image = ImageTk.PhotoImage(self.images[-2])
@@ -134,16 +134,24 @@ class Scotty():  # class for player
         canvas.create_image(x, self.y-(12*app.scale)+self.changeY, image=image)
 
 class BackDrop():  # single sprite of Cohon University Center
-    def __init__(self, app, index, x):
-        self.x = x
-        if index: self.x = (app.dropSize[0]*index)-(app.dropSize[0]/2)
-        self.y = app.height-(app.dropSize[1]/2)
-        self.key = random.choice([0, 1])
+    def __init__(self, app, index, x, type):
+        self.type = type
+        if self.type != 2:
+            if x: self.x = x
+            else: self.x = app.dropImages[2].size[0]+(app.dropSize[0]/2)+\
+                         (index*app.dropSize[0])
+            self.y = app.height-(app.dropSize[1]/2)
+            self.key = random.choice([0, 1])
+            self.image = app.getCachedPhotoImage(app.dropImages[self.key])
+        else:
+            self.image = app.getCachedPhotoImage(app.dropImages[2])
+            self.x = app.dropImages[2].size[0]/2
+            self.y = app.height-(app.dropImages[2].size[1]/2)
 
     def move(self, app): self.x -= app.speed/app.dropMultiplier
 
     def draw(self, app, canvas): canvas.create_image(self.x, self.y,
-            image=app.getCachedPhotoImage(app.dropImages[self.key]))
+                                            image=self.image)
 
 class Coin():  # spinning coin object
     def __init__(self, app, row, col, chunkX, special):
@@ -449,7 +457,7 @@ class Booster():  # rocket fuel power up
         [app.invincible, app.powerUp, app.dDrops] = [False, False, True]
         app.drops = []
         for i in range((app.width//app.dropSize[0])+2):
-            app.drops += [BackDrop(app, i, False)]
+            app.drops += [BackDrop(app, i, False, 1)]
         app.lazyGeneration = False
         app.speed = self.priorSpeed
         app.player.freezeFactor = 1
@@ -635,6 +643,8 @@ class MyApp(App):
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
+        self.dropImages[2] = self.scaleImage(
+            self.loadImage('sprites/cohon1.png'), 2*self.scale)
         for i in range(17): self.igniteImages[i/10] = self.scaleImage(
             self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
         self.igniteImages[1.7] = self.igniteImages[1.5].\
@@ -664,17 +674,21 @@ class MyApp(App):
         [self.coinStart, self.gameOver] = [False, False]
         [self.downInitial, self.upInitial, self.timeInitial, self.pausedTime] =\
             [time.time()-1, time.time()-1, time.time()+1, 0]
-        [self.timeDilation, self.invincible] = [1, False]
+        [self.timeDilation, self.invincible, self.start] = [1, False, False]
         self.player = Scotty(self, self.scottyImages, self.igniteImages)
         [self.coins, self.clouds, self.beams, self.drops, self.missiles,
          self.warnings, self.powerUps] = [[], [], [], [], [], [], []]
         self.specialCoin = Coin(self, False, False, False, True)
-        self.currentChunk = Chunk(self, False, 0)
+        self.currentChunk = Chunk(self, False, self.width)
         [self.firstChunk, self.explosionX] = [False, False]
-        self.newChunk = Chunk(self, False, self.width)
+        self.newChunk = Chunk(self, False, 2*self.width)
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
+        self.dropSetup()
+
+    def dropSetup(self):
+        self.drops += [BackDrop(self, False, False, 2)]
         for i in range((self.width//self.dropSize[0])+2):
-            self.drops += [BackDrop(self, i, False)]
+            self.drops += [BackDrop(self, i, False, 1)]
 
     def checkCoinInteraction(self):  # calls .interacts methods for coins
         coinSpace = min([self.player.sizeX, self.player.sizeY])+self.coinSize/3
@@ -760,10 +774,15 @@ class MyApp(App):
                     newPowerUps += [power]
             elif not power.manage(self):
                 newPowerUps += [power]
-        if self.drops[0].x+(self.dropSize[0]/2) < 0:
+        if self.drops[0].type == 2:
+            if self.drops[0].x+(self.dropImages[2].size[0]/2) < 0:
+                self.drops = self.drops[1:]
+                recentX = self.drops[-1].x+self.dropSize[0]
+                self.drops += [BackDrop(self, False, recentX, 1)]
+        elif self.drops[0].x+(self.dropSize[0]/2) < 0:
             self.drops = self.drops[1:]
             recentX = self.drops[-1].x+self.dropSize[0]
-            self.drops += [BackDrop(self, False, recentX)]
+            self.drops += [BackDrop(self, False, recentX, 1)]
         [self.coins, self.powerUps] = [newCoins, newPowerUps]
         self.manageObstacles()
         self.checkCoinInteraction()
@@ -796,20 +815,21 @@ class MyApp(App):
             if box[1] <= eventY <= box[3]: self.difficulty = boxes[3][i].lower()
 
     def timerFired(self):
-        if self.gameOver and (self.killY > (self.trueHeight/2)+self.barY):
-            self.killY -= 10*self.scale  # moves game over screen
-        self.specialCoin.changeTimeState(self)
-        if not self.paused: self.moveAll()
-        if self.player.up:
-            if self.dDrops: self.player.move(self, ((3*self.speedDifference)/4)*
-                    (-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
-            else: self.player.move(self, (-4*self.scale*(time.time()-
-                                        self.upInitial+1)**(1/2)))
-        elif (not self.paused) or self.gameOver:
-            if self.dDrops: self.player.move(self, ((3*self.speedDifference)/2)*
-                    (self.scale*10*math.log(time.time()-self.downInitial+1)))
-            else: self.player.move(self, (self.scale*10*math.log(time.time()-
-                                            self.downInitial+1)))
+        if self.start:
+            if self.gameOver and (self.killY > (self.trueHeight/2)+self.barY):
+                self.killY -= 10*self.scale  # moves game over screen
+            self.specialCoin.changeTimeState(self)
+            if not self.paused: self.moveAll()
+            if self.player.up:
+                if self.dDrops: self.player.move(self, ((3*self.speedDifference)
+                    /4)*(-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
+                else: self.player.move(self, (-4*self.scale*(time.time()-
+                                            self.upInitial+1)**(1/2)))
+            elif (not self.paused) or self.gameOver:
+                if self.dDrops: self.player.move(self, ((3*self.speedDifference)
+                 /2)*(self.scale*10*math.log(time.time()-self.downInitial+1)))
+                else: self.player.move(self, (self.scale*10*math.log(time.time()
+                                        -self.downInitial+1)))
 
     def mousePressed(self, event):
         if self.settingsOpen: self.clickSettings(event.x, event.y)
@@ -855,6 +875,7 @@ class MyApp(App):
         elif event.key.lower() == 'c': self.points += 1000
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
+        elif event.key.lower() == 's': self.start = True
         elif event.key == '2': testCode.printData(self)
         elif event.key == '1': self.dDrops = not self.dDrops  # display Cohon
 
