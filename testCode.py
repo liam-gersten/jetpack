@@ -3,6 +3,11 @@ import random, copy, time
 import matplotlib.pyplot as plt  # used only for testing purposes
 
 ######
+# Dying with an active power up
+# Resizing with dDrops on
+######
+
+######
 # Printer/Debugger code
 ######
 

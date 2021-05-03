@@ -561,7 +561,8 @@ class Cloud():  # background objects that do not influence gameplay
 
     def move(self, app):
         if self.x+(self.sizeX*self.size) < 0: self.reDefine(app, app.width)
-        self.x -= abs(self.speed/app.cloudMultiplier)
+        if app.start: self.x -= abs(self.speed/app.cloudMultiplier)
+        else: self.x -= abs(self.speed/(app.cloudMultiplier*8))
 
     def draw(self, canvas):
         [x1, y1] = [self.x+(self.size*(self.sizeX/2)),
@@ -667,7 +668,7 @@ class MyApp(App):
         chunkGeneration.resetFasts(self)
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
         [self.currentRun, self.lazyGeneration, self.deaths] = [0, False, 0]
-        [self.debug, self.paused, self.settingsOpen] = [False, False, False]
+        [self.debug, self.paused, self.settingsOpen] = [False, False, True]
         [self.kill, self.firstChunk, self.powerUp] = [False, True, False]
         self.loadSprites()
         [self.movement, self.speed] = [10*self.scale, 2*self.scale]
@@ -812,7 +813,15 @@ class MyApp(App):
         if not (boxes[0][0] <= eventX <= boxes[0][2]): return None
         for i in range(3):
             box = boxes[i]
-            if box[1] <= eventY <= box[3]: self.difficulty = boxes[3][i].lower()
+            if box[1] <= eventY <= box[3]:
+                self.difficulty = boxes[3][i].lower()
+                if not self.start:
+                    [self.start, self.settingsOpen] = [True, False]
+                    difficulty = chunkGeneration.getDifficulty(self)
+                    if self.dDrops: self.speed = self.speedDifference*\
+                        self.scale*(2+(difficulty/10))/self.timeDilation
+                    else: self.speed = self.scale*(2+(difficulty/10))/\
+                                       self.timeDilation
 
     def timerFired(self):
         if self.start:
@@ -824,12 +833,14 @@ class MyApp(App):
                 if self.dDrops: self.player.move(self, ((3*self.speedDifference)
                     /4)*(-4*self.scale*(time.time()-self.upInitial+1)**(1/2)))
                 else: self.player.move(self, (-4*self.scale*(time.time()-
-                                            self.upInitial+1)**(1/2)))
+                                        self.upInitial+1)**(1/2)))
             elif (not self.paused) or self.gameOver:
                 if self.dDrops: self.player.move(self, ((3*self.speedDifference)
                  /2)*(self.scale*10*math.log(time.time()-self.downInitial+1)))
                 else: self.player.move(self, (self.scale*10*math.log(time.time()
                                         -self.downInitial+1)))
+        else:
+            for cloud in self.clouds: cloud.move(self)
 
     def mousePressed(self, event):
         if self.settingsOpen: self.clickSettings(event.x, event.y)
@@ -848,11 +859,11 @@ class MyApp(App):
                     <= self.width-(2*self.buttonSpacing)-self.buttonSizes:
                 self.restartApp()
             if (self.width-(3*(self.buttonSpacing+self.buttonSizes)) <= event.x
-                    <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes)) \
+                    <= self.width-(3*self.buttonSpacing)-(2*self.buttonSizes))\
                     and (not self.gameOver):
                 self.settingsOpen = not self.settingsOpen
                 if not self.paused: pauseGame(self)
-        elif (not self.player.up) and (not self.paused):  # falling
+        elif (not self.player.up) and (not self.paused) and self.start:
             [self.player.airborne, self.player.up] = [True, True]
             [self.player.sizeX, self.player.sizeY] = [35*self.scale,
                                                       46*self.scale]
@@ -903,14 +914,29 @@ class MyApp(App):
         for coin in self.coins:
             if coin.x-self.cellSize <= self.width: coin.draw(self, canvas,
                 self.debug, self.coinSequence, self.coinSize)
-        for beam in self.beams: beam.draw(self, canvas)
-        for exclamation in self.warnings: exclamation.draw(self, canvas)
-        for missile in self.missiles: missile.draw(self, canvas)
-        for powerUp in self.powerUps: powerUp.draw(self, canvas)
-        if self.gameOver:
-            if self.explosionX: self.drawExplosion(canvas)
-            self.drawGameOver(canvas)
+        if self.start:
+            for beam in self.beams: beam.draw(self, canvas)
+            for exclamation in self.warnings: exclamation.draw(self, canvas)
+            for missile in self.missiles: missile.draw(self, canvas)
+            for powerUp in self.powerUps: powerUp.draw(self, canvas)
+            if self.gameOver:
+                if self.explosionX: self.drawExplosion(canvas)
+                self.drawGameOver(canvas)
+        else: self.drawStart(canvas)
         self.drawStatusBar(canvas)
+
+    def drawStart(self, canvas):
+        y = self.barY+(self.trueHeight/4)
+        canvas.create_rectangle((self.width/3)-(self.width/4),
+            y-(self.trueHeight/6), (self.width/3)+(self.width/4),
+                            y+(self.trueHeight/6), fill='grey')
+        canvas.create_rectangle((self.width/3)-((self.width*2)/9),
+            y-(self.trueHeight/7), (self.width/3)+((self.width*2)/9),
+                            y+(self.trueHeight/7), fill='darkgrey')
+        fontSize = 45*(self.width//self.standardizedWidth)
+        font = 'Arial', str(fontSize), 'bold'
+        canvas.create_text(self.width/3, y, fill='maroon', anchor='center',
+            text='Jetpack Scotty', font=font, activefill='black')
 
     def drawExplosion(self, canvas):
         totalTime = 0.1
@@ -952,7 +978,7 @@ class MyApp(App):
     def drawStatusBar(self, canvas):  # top bar with statuses and buttons
         self.drawUpperCoin(canvas)
         self.drawButtons(canvas)
-        self.drawCurrentRun(canvas)
+        if self.start: self.drawCurrentRun(canvas)
         if self.settingsOpen: self.drawSettings(canvas)
 
     def drawUpperCoin(self, canvas):  # coin number in upper left
@@ -987,12 +1013,14 @@ class MyApp(App):
         if self.paused and (not self.gameOver):
             image = ImageTk.PhotoImage(self.buttons['play'])
         else: image = ImageTk.PhotoImage(self.buttons['pause'])
-        if not self.gameOver: canvas.create_image(pausedX, y, image=image)
+        if (not self.gameOver) and self.start:
+            canvas.create_image(pausedX, y, image=image)
         if self.settingsOpen: image = ImageTk.PhotoImage(self.buttons['exit'])
         else: image = ImageTk.PhotoImage(self.buttons['settings'])
-        if not self.gameOver: canvas.create_image(settingsX, y, image=image)
+        if (not self.gameOver) and self.start:
+            canvas.create_image(settingsX, y, image=image)
         image = ImageTk.PhotoImage(self.buttons['reset'])
-        canvas.create_image(restartX, y, image=image)
+        if self.start: canvas.create_image(restartX, y, image=image)
 
     def drawSettings(self, canvas):
         canvas.create_rectangle(self.width-(self.width/4), self.barY,
@@ -1005,8 +1033,9 @@ class MyApp(App):
         boxes = self.getDifficultyBoxes()
         for i in range(3):
             box = boxes[i]
-            if boxes[3][i].lower() == self.difficulty: canvas.create_rectangle(
-            self.width-(self.width/4), box[1], self.width, box[3], fill='white')
+            if (boxes[3][i].lower() == self.difficulty) and self.start:
+                canvas.create_rectangle(self.width-(self.width/4), box[1],
+                                    self.width, box[3], fill='white')
             canvas.create_rectangle(box[0], box[1], box[2], box[3], fill='grey')
             canvas.create_text(midX, box[1]+((box[3]-box[1])/2), font=font,
                 fill=boxes[4][i], activefill='black', anchor='center',

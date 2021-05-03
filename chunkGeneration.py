@@ -265,8 +265,8 @@ def getDifficulty(app):
 def difficultyWrapper(app, chunk, x):
     difficulty = getDifficulty(app)+app.difficultyBase
     if app.dDrops: app.speed = app.speedDifference*\
-        app.scale*(2+((difficulty*1)/10))/app.timeDilation
-    else: app.speed = app.scale*(2+((difficulty*1)/10))/app.timeDilation
+        app.scale*(2+(difficulty/10))/app.timeDilation
+    else: app.speed = app.scale*(2+(difficulty/10))/app.timeDilation
     if app.lazyGeneration: upperBeamRange = 3
     else: upperBeamRange = int(difficulty/20)+1  # second curve
     if not app.invincible: missileGenerator(app, difficulty, False)
