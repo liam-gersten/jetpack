@@ -22,8 +22,8 @@ def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
     if (x1 > app.width) and (x2 > app.width): return None
     color = 'red'
     if app.timeDilation == 3: color ='spring green' # slowed time
-    width = random.choice([11, 5, 12, 8, 10, 6])
-    scaleColor = [[3, 'grey50'], [10, color]]
+    width = random.choice([11, 5, 12, 8, 10, 6])  # beam widths
+    scaleColor = [[3, 'grey50'], [10, color]]  # scales
     if not app.invincible:
         for i in range(1): canvas.create_line(x1, y1, x2, y2,
                         fill=color, width=width*app.scale)
@@ -47,8 +47,10 @@ def managePowerUp(object, app):  # manages power ups of any type
     return False
 
 def drawPowerUp(object, app, canvas):  # draws power ups of any type
+    heightChange = 5
     if object.x-app.cellSize > app.width: return None
-    if not object.active: yChange = 5*math.sin(5*time.time())*app.scale
+    if not object.active: yChange = heightChange*math.sin(heightChange*
+                                    time.time())*app.scale
     else: yChange = 0
     canvas.create_image(object.x, object.y+yChange,
                         image=ImageTk.PhotoImage(object.sprite))
@@ -62,7 +64,7 @@ def drawPowerUp(object, app, canvas):  # draws power ups of any type
         canvas.create_text(object.x+app.barY, object.y, fill=color,
                            text=timer, anchor='center', font=font)
 
-def pauseGame(app):
+def pauseGame(app):  # pauses game and freezes all objects
     app.paused = not app.paused
     if app.paused: app.timePaused = time.time()
     else: app.pausedTime += (time.time()-app.timePaused)
@@ -74,9 +76,9 @@ def pauseGame(app):
 
 class Scotty():  # class for player
     def __init__(self, app, images, igniteImages):
-        self.x = app.width/4
-        self.y = 427*app.scaleY
-        [self.sizeX, self.sizeY] = [52*app.scale, 36*app.scale]
+        self.x = app.width/4  # specific x coordinate
+        self.y = 427*app.scaleY  # specific y coordinate
+        [self.sizeX, self.sizeY] = [52*app.scale, 36*app.scale]  # sprite sizes
         [self.up, self.airborne, self.fireStart] = [False, False, False]
         self.freezeFactor = 1
         self.images = images
@@ -97,15 +99,15 @@ class Scotty():  # class for player
 
     def manage(self):
         if self.freezeFactor != 1:
-            self.changeY = random.choice([-2, -1, 0, 1, 2])
+            self.changeY = random.choice([-2, -1, 0, 1, 2])  # shakes
             if (int((time.time()-self.fireStart)*10))/10 > 0.5:
-                self.fireStart = time.time()
+                self.fireStart = time.time()  # 1 second curve
         else: self.changeY = 0
 
     def draw(self, app, canvas, debug):
         if (self.airborne or self.up): key = -1
         elif app.paused or (not app.start): key = 0
-        else: key = int((time.time()*7*(app.speed/5))%3)  # ignite 1-15
+        else: key = int((time.time()*7*(app.speed/5))%3)  # specific key curve
         image = ImageTk.PhotoImage(self.images[key])
         if self.freezeFactor != 1: image = ImageTk.PhotoImage(self.images[-2])
         canvas.create_image(self.x+self.changeX, self.y+self.changeY,
@@ -118,16 +120,16 @@ class Scotty():  # class for player
         if self.up and (self.freezeFactor == 1): self.drawNormal(app, canvas)
         elif self.freezeFactor != 1: self.drawBlue(app, canvas)
 
-    def drawNormal(self, app, canvas):
-        startCoords = [self.x-(12*app.scale), self.y+(self.sizeY/2)]
-        key = (int((time.time()-app.upInitial)*10))/10
-        if key > 1.8: key = random.choice([1.5, 1.6, 1.7, 1.8])
+    def drawNormal(self, app, canvas): # standard red fire
+        startCoords = [self.x-(12*app.scale), self.y+(self.sizeY/2)]  # sprite
+        key = (int((time.time()-app.upInitial)*10))/10  # 1 second curve
+        if key > 1.8: key = random.choice([1.5, 1.6, 1.7, 1.8])  # extra keys
         image = ImageTk.PhotoImage(self.igniteImages[key])
         y = startCoords[1]+((self.igniteImages[key].size[1])/2)
         canvas.create_image(startCoords[0]+self.changeX, y, image=image)
 
-    def drawBlue(self, app, canvas):
-        key = (int((time.time()-self.fireStart)*10))/10
+    def drawBlue(self, app, canvas):  # draws fire during super speed
+        key = (int((time.time()-self.fireStart)*10))/10  # 1 second curve
         if key > 0.5: key = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
         image = ImageTk.PhotoImage(app.rightFire[key])
         x = self.x-(self.images[-2].size[0]/2)-(app.rightFire[key].size[0]/2)
@@ -136,7 +138,7 @@ class Scotty():  # class for player
 class BackDrop():  # single sprite of Cohon University Center
     def __init__(self, app, index, x, type):
         self.type = type
-        if self.type != 2:
+        if self.type != 2:  # standard sprites
             if x: self.x = x
             elif not app.start: self.x = app.dropImages[2].size[0]+\
                 (app.dropSize[0]/2)+(index*app.dropSize[0])
@@ -144,7 +146,7 @@ class BackDrop():  # single sprite of Cohon University Center
             self.y = app.height-(app.dropSize[1]/2)+app.dropY
             self.key = random.choice([0, 1])
             self.image = app.getCachedPhotoImage(app.dropImages[self.key])
-        else:
+        else:  # front of Cohon at start
             self.image = app.getCachedPhotoImage(app.dropImages[2])
             self.x = app.dropImages[2].size[0]/2
             self.y = app.height-(app.dropImages[2].size[1]/2)
@@ -156,19 +158,19 @@ class BackDrop():  # single sprite of Cohon University Center
 
 class Coin():  # spinning coin object
     def __init__(self, app, row, col, chunkX, special):
-        if not special:
+        if not special:  # normal coins
             self.special = False
             self.x = chunkX+(app.cellSize*col)+\
                      ((app.coinSize+app.coinSpacing)/2)
             self.y = app.barY+(app.cellSize*row)+\
                      ((app.coinSize+app.coinSpacing)/2)
-        else:
+        else:  # spinning coin in the upper left
             self.special = True
             self.standardSize = app.buttonSizes/app.coinSequence[0].size[0]
             self.x = (app.buttonSizes/2)+app.buttonSpacing
             self.y = app.barY/2
 
-    def changeTimeState(self, app):
+    def changeTimeState(self, app):  # creates endless loops
         if time.time()-app.coinStart >= 1: app.coinStart = False
 
     def interacts(self, x, y, distance):  # player touches
@@ -193,7 +195,7 @@ class StaticBeam():  # does not move
         self.type = 'static'
         self.width = app.cellSize
         if (rows == 1) or (cols == 1): [minus, first, second] = [1, 0, 0]
-        else:
+        else:  # diagonal
             minus = 0
             [first, second] = random.choice([[[rows-1, 0], [0, cols-1]],
                                              [[0, 0], [rows-1, cols-1]]])
@@ -202,7 +204,7 @@ class StaticBeam():  # does not move
         self.x2 = ((col+second[1]-minus)*app.cellSize)+chunkX+(app.cellSize/2)
         self.y2 = ((row+second[0]-minus)*app.cellSize)+(app.cellSize/2)+app.barY
 
-    def move(self, app):
+    def move(self, app):  # used for inheritance
         self.x1 -= app.speed
         self.x2 -= app.speed
 
@@ -212,7 +214,7 @@ class StaticBeam():  # does not move
     def interacts(self, app, player): return minDistance([self.x1, self.y1],
                 [self.x2, self.y2], [player.x, player.y]) <= (player.sizeX/2)
 
-    def draw(self, app, canvas):
+    def draw(self, app, canvas):  # used for inheritance
         drawBeam(app, canvas, self.x1, self.y1, self.x2, self.y2)
 
 class VerticalBeam():  # moves vertically
@@ -231,12 +233,12 @@ class VerticalBeam():  # moves vertically
 
     def outOfBounds(self): return self.centerX+self.xScale+self.width < 0
 
-    def freeze(self, state):
+    def freeze(self, state):  # variables for app.paused
         if state: self.timeFrozen = time.time()
         else: self.timePaused += (time.time()-self.timeFrozen)
         self.frozen = state
 
-    def dilate(self, app):
+    def dilate(self, app):  # variables for time/speed changes
         self.timeStarted = time.time()-app.timeInitial
         self.snapShot = self.timePosition
 
@@ -278,12 +280,12 @@ class HorizontalBeam():  # moves horizontally
 
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
-    def freeze(self, state):
+    def freeze(self, state):  # variables for app.paused
         if state: self.timeFrozen = time.time()
         else: self.timePaused += (time.time()-self.timeFrozen)
         self.frozen = state
 
-    def dilate(self, app):
+    def dilate(self, app):  # variables for time/speed changes
         self.timeStarted = time.time()-app.timeInitial
         self.snapShot = self.timePosition
 
@@ -325,16 +327,16 @@ class RotatingBeam():  # rotate left or right
 
     def outOfBounds(self): return self.centerX+(2*self.xScale)+self.width < 0
 
-    def freeze(self, state):
+    def freeze(self, state):  # variables for app.paused
         if state: self.timeFrozen = time.time()
         else: self.timePaused += (time.time()-self.timeFrozen)
         self.frozen = state
 
-    def dilate(self, app):
+    def dilate(self, app):  # variables for time/speed changes
         self.timeStarted = time.time()-app.timeInitial
         self.snapShot = self.timePosition
 
-    def getAngle(self, app, view):
+    def getAngle(self, app, view):  # gets current angle using trig
         if self.frozen: timePosition = (self.timeFrozen-self.timePaused)-\
                                         app.timeInitial
         else: timePosition = (time.time()-self.timePaused)-app.timeInitial
@@ -366,7 +368,7 @@ class Missile():
         self.y = y
 
     def move(self, app):
-        if (int((time.time()-self.fireStart)*10))/10 > 0.5:
+        if (int((time.time()-self.fireStart)*10))/10 > 0.5:  # 1 second curve
             self.fireStart = time.time()
         self.x -= app.missileMultiplier*app.speed  # slightly faster
 
@@ -391,7 +393,7 @@ class Missile():
                                     image=ImageTk.PhotoImage(app.clock))
 
     def drawFire(self, app, canvas, shakeY):
-        key = (int((time.time()-self.fireStart)*10))/10
+        key = (int((time.time()-self.fireStart)*10))/10  # 1 second curve
         if key > 0.5: key = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
         image = ImageTk.PhotoImage(app.missileFire[key])
         x = self.x+(app.missile.size[0]/2)+(app.missileFire[key].size[0]/2)
@@ -418,7 +420,7 @@ class Exclamation():  # exclamation point that appears before and makes missiles
 
     def draw(self, app, canvas):
         x = app.width-(2*app.cellSize)
-        fontSize = 50*(app.scale)
+        fontSize = 50*app.scale
         font = 'Times', str(int(fontSize)), 'bold'
         canvas.create_text(x, self.y, fill='red', text='!', anchor='center',
                            font=font)
@@ -435,7 +437,7 @@ class Booster():  # rocket fuel power up
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
             self.activate(app)
 
-    def freeze(self, state):
+    def freeze(self, state):  # variables for app.paused
         if state: self.timePaused = time.time()
         else: self.timeLength += (time.time()-self.timePaused)
         self.frozen = state
@@ -447,7 +449,7 @@ class Booster():  # rocket fuel power up
         [app.invincible, app.missiles, app.lazyGeneration] = [True, [], True]
         app.player.freezeFactor = 2
 
-    def manage(self, app):
+    def manage(self, app):  # hides and shows Cohon sprites
         if self.active:
             timeSinceStart = time.time()-self.timeInitial
             inflationScale = math.sin(math.pi*timeSinceStart/self.timeLength)
@@ -483,13 +485,13 @@ class Invincibility():  # heart power up
         [self.x, self.y] = [app.width+x, y]
         [self.active, self.frozen] = [False, False]  # waiting on the board
         self.sprite = app.heart
-        self.timeLength = 10
+        self.timeLength = 10  # 10 seconds long
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
             self.activate(app)
 
-    def freeze(self, state):
+    def freeze(self, state):  # variables for app.paused
         if state: self.timePaused = time.time()
         else: self.timeLength += (time.time()-self.timePaused)
         self.frozen = state
@@ -521,7 +523,7 @@ class TimeSlower():  # power up that slows down time
         [self.x, self.y] = [app.width+x, y]
         [self.active, self.frozen] = [False, False]
         self.sprite = app.clockCircle
-        self.timeLength = 15
+        self.timeLength = 15  # 15 seconds long
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
@@ -590,8 +592,8 @@ class Chunk():  # 2D list includes locations of coins/obstacles
             self.literal = chunkGeneration.generationManager(app, x)
             self.x = x
 
-class JetpackScotty(App):
-    def appStarted(self):
+class JetpackScotty(App):  # main app class
+    def appStarted(self):  # variables not reset by restartApp
         self.speedDifference = 3
         [self.rows, self.cols, self.points] = [20, 40, 0]
         [self.difficulty, self.diffInc] = ['medium', 5]
@@ -673,8 +675,8 @@ class JetpackScotty(App):
             scale = self.buttonSizes/self.buttons[button].size[0]
             self.buttons[button] = self.scaleImage(self.buttons[button], scale)
 
-    def restartApp(self):
-        chunkGeneration.resetLongs(self)
+    def restartApp(self):  # variables reset on death
+        chunkGeneration.resetLongs(self)  # player data is reset
         chunkGeneration.resetStandards(self)
         chunkGeneration.resetFasts(self)
         [self.dDrops, self.dCoins, self.lazyGeneration] = [True, True, False]
@@ -700,10 +702,10 @@ class JetpackScotty(App):
         for i in range(self.cloudNumer): self.clouds += [Cloud(self, i)]
         self.dropSetup()
 
-    def getQuitMessage(self):
+    def getQuitMessage(self):  # alters default quit message
         return '\n*** Closing Jetpack Scotty. I hope you enjoyed! ***\n'
 
-    def dropSetup(self):
+    def dropSetup(self):  # makes new drops fro restartApp
         self.drops += [BackDrop(self, False, False, 2)]
         for i in range((self.width//self.dropSize[0])+2):
             self.drops += [BackDrop(self, i, False, 1)]
@@ -718,12 +720,12 @@ class JetpackScotty(App):
             else: newCoins += [coin]
         self.coins = newCoins
 
-    def getCachedPhotoImage(self, image):
+    def getCachedPhotoImage(self, image):  # helpful for many sprites
         if ('cachedPhotoImage' not in image.__dict__):
             image.cachedPhotoImage = ImageTk.PhotoImage(image)
         return image.cachedPhotoImage
 
-    def explosionSetUp(self, missile):
+    def explosionSetUp(self, missile):  # creates missile explosion
         [self.explosionX, self.explosionY] = [missile.x, missile.y]
         self.maxRadius = [self.trueHeight, self.trueHeight/2, self.trueHeight/3]
         self.TOD = time.time()
@@ -747,7 +749,7 @@ class JetpackScotty(App):
                     newPowerUps += [power]
             self.powerUps = newPowerUps
 
-    def respawn(self):
+    def respawn(self):  # gives invincibility and revives player
         self.gameOver = False
         pauseGame(self)
         self.points -= 100
@@ -756,7 +758,7 @@ class JetpackScotty(App):
         self.timeDilation = 1  # counters increased speed of invincibility
         [self.explosionX, self.explosionY] = [False, False]
 
-    def manageObstacles(self):
+    def manageObstacles(self):  # obstacle objects only
         [newBeams, kill, newWarnings, newMissiles] = [[], False, [], []]
         if self.newChunk.x <= 0:
             self.currentChunk = Chunk(self, self.newChunk.literal,
@@ -825,7 +827,7 @@ class JetpackScotty(App):
         for missile in self.missiles: missile.move(self)
         self.manageAll()
 
-    def changeSpeedGraphics(self, draw=None):
+    def changeSpeedGraphics(self, draw=None):  # alters speed and/or graphics
         if draw == True: self.dDrops = True
         elif draw == False: self.dDrops = False
         difficulty = chunkGeneration.getDifficulty(self)+self.difficultyBase
@@ -833,7 +835,7 @@ class JetpackScotty(App):
                             (difficulty/10))/self.timeDilation
         else: self.speed = self.scale*(2+(difficulty/10))/self.timeDilation
 
-    def getDifficultyBoxes(self):
+    def getDifficultyBoxes(self):  # rectangles for difficulty selection
         [boxes, midX] = [[], (self.width*7)/8]
         [xSpan, ySpan] = [self.width/9, (self.trueHeight/25)]
         for i in range(2, 5):
@@ -841,6 +843,7 @@ class JetpackScotty(App):
             boxes += [[midX-xSpan, y-ySpan, midX+xSpan, y+ySpan]]
         return boxes+[['Easy', 'Medium', 'Hard'], ['green', 'yellow', 'red']]
 
+    # checks if settings are clicked or hovered over
     def clickSettings(self, eventX, eventY, click):
         boxes = self.getDifficultyBoxes()
         self.highlight = False
@@ -875,7 +878,7 @@ class JetpackScotty(App):
                  /2)*(self.scale*10*math.log(time.time()-self.downInitial+1)))
                 else: self.player.move(self, (self.scale*10*math.log(time.time()
                                         -self.downInitial+1)))
-        else:
+        else:  # still move on main menu
             for cloud in self.clouds: cloud.move(self)
 
     def mousePressed(self, event):
@@ -924,12 +927,12 @@ class JetpackScotty(App):
         elif event.key.lower() == 'c': self.points += 1000
         elif event.key.lower() == 'm': chunkGeneration.missileGenerator(self,
                 50, True)  # instantly generates a missile
-        elif event.key.lower() == 'g':
+        elif event.key.lower() == 'g':  # changes graphics
             if self.dDrops: self.changeSpeedGraphics(draw=False)
             else: self.changeSpeedGraphics(draw=True)
         elif event.key.lower == 't': testCode.printData(self)
 
-    def sizeChanged(self):
+    def sizeChanged(self):  # certain variables must be reset from appStarted
         self.scale = self.width/self.standardizedWidth
         self.standardizedHeight = 400
         self.barY = (self.height//self.barPortion)
@@ -944,9 +947,9 @@ class JetpackScotty(App):
 
     def redrawAll(self, canvas):
         self.drawSky(canvas)
-        if self.dDrops:
+        if self.dDrops:  # draws Cohon
             for drop in self.drops: drop.draw(self, canvas)
-        if self.debug:
+        if self.debug:  # hitboxes and grid drawn
             testCode.drawBorders(self.currentChunk.x, self, canvas, 'red')
             testCode.drawBorders(self.newChunk.x, self, canvas, 'blue')
         self.player.draw(self, canvas, self.debug)
@@ -965,7 +968,7 @@ class JetpackScotty(App):
         else: self.drawStart(canvas)
         self.drawStatusBar(canvas)
 
-    def drawStart(self, canvas):
+    def drawStart(self, canvas):  # draws start screen
         y = self.barY+(self.trueHeight/4)
         canvas.create_rectangle((self.width/3)-(self.width/4),
             y-(self.trueHeight/6), (self.width/3)+(self.width/4),
@@ -973,7 +976,7 @@ class JetpackScotty(App):
         canvas.create_rectangle((self.width/3)-((self.width*2)/9),
             y-(self.trueHeight/7), (self.width/3)+((self.width*2)/9),
                             y+(self.trueHeight/7), fill='darkgrey')
-        fontSize = int(45*self.scale)
+        fontSize = int(45*self.scale)  # large title text
         font = 'Arial', str(fontSize), 'bold'
         canvas.create_text(self.width/3, y, fill='maroon', anchor='center',
             text='Jetpack Scotty', font=font, activefill='black')
@@ -982,7 +985,7 @@ class JetpackScotty(App):
         totalTime = 0.1
         if time.time()-self.TOD <= totalTime:
             colors = ['white', 'orange', 'red']
-            for i in range(3):
+            for i in range(3):  # three rings
                 radius = (self.maxRadius[i]*(time.time()-self.TOD))/totalTime
                 canvas.create_oval(self.explosionX-radius,
                     self.explosionY-radius, self.explosionX+radius,
@@ -1002,8 +1005,8 @@ class JetpackScotty(App):
         canvas.create_rectangle(box2[0], box2[1], box2[2], box2[3], fill='grey')
         canvas.create_text(self.killX, self.killY-(self.killYSize/5),
             fill='red', text='Game Over!', anchor='center', font=font)
-        if self.points < 100: box = 'red'
-        else: box = 'green'
+        if self.points < 100: box = 'red'  # cannot respawn
+        else: box = 'green'  # can respawn
         canvas.create_rectangle(box3[0], (self.height/10)+box3[1], box3[2],
                             (self.height/10)+box3[3], fill=box)
         fontSize = 24*(self.width//self.standardizedWidth)
@@ -1035,7 +1038,7 @@ class JetpackScotty(App):
         font = 'Times', str(fontSize), 'bold'
         if self.currentRun >= self.longestRun:
             text = 'High Score! '+str(int(self.currentRun//100))+'m'
-            colors = ['darkgrey', 'gold']
+            colors = ['darkgrey', 'gold']  # meters obtained by dividing by 100
         else:
             text = 'Current Run '+str(int(self.currentRun//100))+'m'
             colors = ['lightgrey', 'black']
@@ -1050,7 +1053,7 @@ class JetpackScotty(App):
         pausedX = self.width-self.buttonSpacing-(self.buttonSizes//2)
         restartX = self.width-(2*self.buttonSpacing)-((3*self.buttonSizes)//2)
         settingsX = self.width-(3*self.buttonSpacing)-((5*self.buttonSizes)//2)
-        if self.paused and (not self.gameOver):
+        if self.paused and (not self.gameOver):  # draw pause/play
             image = ImageTk.PhotoImage(self.buttons['play'])
         else: image = ImageTk.PhotoImage(self.buttons['pause'])
         if (not self.gameOver) and self.start:
@@ -1067,11 +1070,11 @@ class JetpackScotty(App):
                 self.width, self.barY+(self.trueHeight/2), fill='darkgrey')
         fontSize = int(24*self.scale)
         font = 'Times', str(fontSize), 'bold'
-        midX = (self.width*7)/8
+        midX = (self.width*7)/8  # specific x coordinate
         canvas.create_text(midX, self.barY+(self.trueHeight/10), fill='black',
             anchor='center',  text='Difficulty:', font=font)
         boxes = self.getDifficultyBoxes()
-        for i in range(3):
+        for i in range(3):  # three difficulties
             box = boxes[i]
             if (boxes[3][i].lower() == self.difficulty) and self.start and \
                     (not self.highlight): canvas.create_rectangle(self.width-
@@ -1080,8 +1083,8 @@ class JetpackScotty(App):
             if self.highlight and (self.highlight == box) and (not self.start):
                 canvas.create_rectangle(box[0], box[1], box[2], box[3],
                                         fill='white')
-                textFill = 'black'
-            else: textFill = boxes[4][i]
+                textFill = 'black'  # selected
+            else: textFill = boxes[4][i]  # not selected
             canvas.create_text(midX, box[1]+((box[3]-box[1])/2), font=font,
                 fill=textFill, activefill='black', anchor='center',
                 text=boxes[3][i])

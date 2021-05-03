@@ -48,9 +48,6 @@ def outlineScotty(object, canvas):  # displays the hitbox for scotty
         (object.sizeY/2), object.x+(object.sizeX/2), object.y+(object.sizeY/2),
                             fill='')
 
-def tp3ReadMe():  # instructions as of tp1
-    pass
-
 ######
 # bareGenerator code
 ######

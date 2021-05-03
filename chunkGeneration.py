@@ -39,28 +39,28 @@ class MiniChunk():  # small 2D list of a certain object
                 chunk[row+self.row][col+self.col] = id
         return chunk
 
-def resetStandards(app):
+def resetStandards(app):  # reset every so often
     app.balance = time.time()
     app.missileAvoids = {0: 1, 1: 1, 2: 1, 3: 1}
     app.missileDeaths = {0: 1, 1: 1, 2: 1, 3: 1}
 
-def resetFasts(app):
+def resetFasts(app):  # resets frequently
     app.beamBalance = time.time()
     app.beamDeathQuadrants = {0: 1, 1: 1, 2: 1, 3: 1}
 
-def resetLongs(app):
+def resetLongs(app):  # resets infrequently
     app.longBalance = time.time()
     app.beamDeathTypes = {'static': 1, 'vertical': 1, 'horizontal': 1,
                            'rotating': 1}
 
-def getQuadrantFromY(app, y):
+def getQuadrantFromY(app, y):  # gets one of four quadrants from y
     if y <= (app.barY+(app.trueHeight/2)):
         if y <= (app.barY+(app.trueHeight/4)): return 0
         return 1
     if y <= (app.barY+((3*app.trueHeight)/4)): return 2
     return 3
 
-def getYRangeFromQuadrant(app, quadrant):
+def getYRangeFromQuadrant(app, quadrant):  # range of spawning
     if quadrant == 0: return [app.barY, app.barY+(app.trueHeight//4)]
     if quadrant == 1: return [app.barY+(app.trueHeight//4),
                               app.barY+(app.trueHeight//2)]
@@ -120,6 +120,7 @@ def conversionWrapper(app, chunk):  # converts chunk values into booleans
         testChunk += [row]
     return pathFinder(app, testChunk)
 
+# two competing probability distributions merged into 1 from weigth
 def mergeDoubleDistributions(difficulty, dist1, dist2):
     avoidanceWeight = (1/10)+(difficulty/250)
     deathWeight = (1-avoidanceWeight)*100
@@ -132,6 +133,7 @@ def mergeDoubleDistributions(difficulty, dist1, dist2):
         newProportions[key] = abs(value)
     return newProportions
 
+# single distribution merged
 def mergeSingleDistribution(difficulty, distribution, type):
     totalPossible = 0
     if type == 'missile': biasWeight = (3/4)+(difficulty/100)
@@ -147,6 +149,7 @@ def mergeSingleDistribution(difficulty, distribution, type):
         newProportions[key] = ((biasWeight*p1)+(originalWeight*p2))/100
     return newProportions
 
+# builds distribution list from probability dictionary
 def createDistribution(probabilities):
     [distribution, distributionSize] = [[], 30]
     for key in probabilities:
@@ -157,7 +160,7 @@ def createDistribution(probabilities):
         for key in probabilities: distribution += [key]
     return distribution
 
-def getBeamRowColRanges(app, quadrant):
+def getBeamRowColRanges(app, quadrant):  # spawn ranges from quadrant
     if quadrant == 0: return [0, app.rows//4]
     if quadrant == 1: return [app.rows//4, app.rows//2]
     if quadrant == 2: return [app.rows//2, (app.rows*3)//4]
