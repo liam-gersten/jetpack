@@ -50,10 +50,10 @@ def resetFasts(app):  # resets frequently
 
 def resetLongs(app):  # resets infrequently
     app.longBalance = time.time()
-    # app.beamDeathTypes = {'static': 1, 'vertical': 1, 'horizontal': 1,
-    #                        'rotating': 1}
-    app.beamDeathTypes = {'static': 0, 'vertical': 1, 'horizontal': 0,
-                           'rotating': 0}
+    app.beamDeathTypes = {'static': 1, 'vertical': 1, 'horizontal': 1,
+                           'rotating': 1}
+    # app.beamDeathTypes = {'static': 0, 'vertical': 1, 'horizontal': 0,
+    #                        'rotating': 0}
 
 def getQuadrantFromY(app, y):  # gets one of four quadrants from y
     if y <= (app.barY+(app.trueHeight/2)):
@@ -248,7 +248,7 @@ def getNewRowCol(chunk):  # helper for powerUpGenerator that chooses row and col
 
 def powerUpGenerator(app, chunk):  # spawns power ups on top of chunks
     choice = random.choice([1, 1, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0])
-    # choice = 3
+    # choice = 1
     if choice != 0: [row, col] = getNewRowCol(chunk)
     if choice == 1: app.powerUps += [jetpack.TimeSlower(app, (col*app.cellSize)+
         (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]

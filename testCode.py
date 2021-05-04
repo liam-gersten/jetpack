@@ -4,7 +4,13 @@ import random, copy
 ######
 # Vertical:
 # - In works
-# - Out rarely works
+# - Out doesn't works
+# Horizontal:
+# - In doesn't work
+# - Out doesn't work
+# Rotating:
+# - In works
+# - Out doesn't work
 ######
 
 ######

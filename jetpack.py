@@ -21,11 +21,10 @@ def minDistance(pa, pb, px):
 def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
     if (x1 > app.width) and (x2 > app.width): return None
     color = 'red'
-    if app.timeDilation == 3: color ='spring green' # slowed time
     width = random.choice([11, 5, 12, 8, 10, 6])  # beam widths
+    if app.timeDilation == 3: color ='spring green' # slowed time
+    elif app.invincible: [color, width] = ['white', 5]
     scaleColor = [[3, 'grey50'], [10, color]]  # scales
-    # if not app.invincible: canvas.create_line(x1, y1, x2, y2, fill=color,
-    #                             width=width*app.scale)
     canvas.create_line(x1, y1, x2, y2, fill=color, width=width*app.scale)
     for coords in [[x1, y1], [x2, y2]]:
         for scale in scaleColor: canvas.create_oval(coords[0]-(
@@ -228,6 +227,7 @@ class VerticalBeam():  # moves vertically
         self.timePosition = 0
         [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
+        if app.timeDilation == 3: self.dilate(app)
 
     def move(self, app): self.centerX -= app.speed
 
@@ -507,7 +507,7 @@ class Invincibility():  # heart power up
         if self.active:
             timeSinceStart = time.time()-self.timeInitial
             inflationScale = math.sin(math.pi*timeSinceStart/self.timeLength)
-            app.speed = self.priorSpeed+((inflationScale*app.speed*8)/10)
+            app.speed = self.priorSpeed+((inflationScale*app.speed*3)/5)
         return managePowerUp(self, app)
 
     def deactivate(self, app):
@@ -549,7 +549,7 @@ class TimeSlower():  # power up that slows down time
         app.powerUp = False
         app.speed = app.speed*app.timeDilation  # resets speed
         app.timeDilation = 1
-
+        for beam in app.beams: beam.dilate(app)
     def draw(self, app, canvas):
         drawPowerUp(self, app, canvas)
 
