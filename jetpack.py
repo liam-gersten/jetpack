@@ -636,7 +636,8 @@ class JetpackScotty(App):  # main app class
             self.scaleImage(self.buttons[button], self.scale)
         self.missile = self.loadImage('sprites/missile.png')
         self.missile = self.scaleImage(self.missile, 1.5*self.scale)
-        self.gas = self.loadImage('sprites/gas.png')
+        self.gas = self.scaleImage(self.loadImage('sprites/gas.png'),
+                                   self.scale)
 
     def loadSprites(self):  # for sets of similar sprites
         self.loadIndividualSprites()
