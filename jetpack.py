@@ -275,6 +275,7 @@ class HorizontalBeam():  # moves horizontally
         self.timePosition = 0
         [self.timeStarted, self.snapShot] = [0, 0]
         [self.frozen, self.timePaused] = [False, 0]
+        if app.timeDilation == 3: self.dilate(app)
 
     def move(self, app): self.centerX -= app.speed
 
@@ -322,6 +323,7 @@ class RotatingBeam():  # rotate left or right
         [self.timeStarted, self.snapShot] = [0, 0]
         self.timePosition = 0
         [self.frozen, self.timePaused] = [False, 0]
+        if app.timeDilation == 3: self.dilate(app)
 
     def move(self, app): self.centerX -= app.speed
 
@@ -522,7 +524,7 @@ class TimeSlower():  # power up that slows down time
         [self.x, self.y] = [app.width+x, y]
         [self.active, self.frozen] = [False, False]
         self.sprite = app.clockCircle
-        self.timeLength = 7  # 15 seconds long
+        self.timeLength = 15  # 15 seconds long
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
