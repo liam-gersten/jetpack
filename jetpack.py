@@ -24,8 +24,9 @@ def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
     if app.timeDilation == 3: color ='spring green' # slowed time
     width = random.choice([11, 5, 12, 8, 10, 6])  # beam widths
     scaleColor = [[3, 'grey50'], [10, color]]  # scales
-    if not app.invincible: canvas.create_line(x1, y1, x2, y2, fill=color,
-                                width=width*app.scale)
+    # if not app.invincible: canvas.create_line(x1, y1, x2, y2, fill=color,
+    #                             width=width*app.scale)
+    canvas.create_line(x1, y1, x2, y2, fill=color, width=width*app.scale)
     for coords in [[x1, y1], [x2, y2]]:
         for scale in scaleColor: canvas.create_oval(coords[0]-(
                 app.cellSize/scale[0]),coords[1]-(app.cellSize/scale[0]),
@@ -483,6 +484,7 @@ class Invincibility():  # heart power up
     def __init__(self, app, x, y):
         [self.x, self.y] = [app.width+x, y]
         [self.active, self.frozen] = [False, False]  # waiting on the board
+        self.priorSpeed = app.speed
         self.sprite = app.heart
         self.timeLength = 10  # 10 seconds long
 
@@ -499,20 +501,18 @@ class Invincibility():  # heart power up
         [self.active, app.powerUp] = [True, True]
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
-        app.invincible = True
-        app.timeDilation = 1/2  # speed is doubled
-        for beam in app.beams:
-            if beam.type != 'static': beam.dilate(app)
-        app.speed = app.speed/app.timeDilation
-        app.missiles = []
+        [app.invincible, app.missiles] = [True, []]
 
     def manage(self, app):
+        if self.active:
+            timeSinceStart = time.time()-self.timeInitial
+            inflationScale = math.sin(math.pi*timeSinceStart/self.timeLength)
+            app.speed = self.priorSpeed+((inflationScale*app.speed*8)/10)
         return managePowerUp(self, app)
 
     def deactivate(self, app):
         [app.invincible, app.powerUp] = [False, False]
-        app.speed = app.speed*app.timeDilation  # speed reset
-        app.timeDilation = 1
+        app.speed = self.priorSpeed  # speed reset
 
     def draw(self, app, canvas):
         drawPowerUp(self, app, canvas)
@@ -522,7 +522,7 @@ class TimeSlower():  # power up that slows down time
         [self.x, self.y] = [app.width+x, y]
         [self.active, self.frozen] = [False, False]
         self.sprite = app.clockCircle
-        self.timeLength = 15  # 15 seconds long
+        self.timeLength = 7  # 15 seconds long
 
     def interacts(self, app, x, y):
         if math.sqrt(((self.x-x)**2)+((self.y-y)**2)) <= (app.player.sizeX):
@@ -829,9 +829,11 @@ class JetpackScotty(App):  # main app class
         if draw == True: self.dDrops = True
         elif draw == False: self.dDrops = False
         difficulty = chunkGeneration.getDifficulty(self)+self.difficultyBase
+        if draw == 'pass': return difficulty
         if self.dDrops: self.speed = self.speedDifference*self.scale*(2+
                             (difficulty/10))/self.timeDilation
         else: self.speed = self.scale*(2+(difficulty/10))/self.timeDilation
+        return difficulty
 
     def getDifficultyBoxes(self):  # rectangles for difficulty selection
         [boxes, midX] = [[], (self.width*7)/8]

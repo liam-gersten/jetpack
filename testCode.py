@@ -2,6 +2,12 @@ import chunkGeneration
 import random, copy
 
 ######
+# Vertical:
+# - In works
+# - Out rarely works
+######
+
+######
 # Printer/Debugger code
 ######
 
