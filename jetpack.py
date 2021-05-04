@@ -24,9 +24,8 @@ def drawBeam(app, canvas, x1, y1, x2, y2):  # works for all beam typea
     if app.timeDilation == 3: color ='spring green' # slowed time
     width = random.choice([11, 5, 12, 8, 10, 6])  # beam widths
     scaleColor = [[3, 'grey50'], [10, color]]  # scales
-    if not app.invincible:
-        for i in range(1): canvas.create_line(x1, y1, x2, y2,
-                        fill=color, width=width*app.scale)
+    if not app.invincible: canvas.create_line(x1, y1, x2, y2, fill=color,
+                                width=width*app.scale)
     for coords in [[x1, y1], [x2, y2]]:
         for scale in scaleColor: canvas.create_oval(coords[0]-(
                 app.cellSize/scale[0]),coords[1]-(app.cellSize/scale[0]),
@@ -735,7 +734,6 @@ class JetpackScotty(App):  # main app class
         self.gameOver = True
         pauseGame(self)
         self.deaths += 1
-        newPowerUps = []
         [self.killXSize, self.killYSize] = [self.width/4, self.trueHeight/4]
         [self.miniXSize, self.miniYSize] = [(9*self.killXSize)/10,
                                             (9*self.killYSize)/10]
@@ -743,11 +741,10 @@ class JetpackScotty(App):  # main app class
         [self.respawnSizeX, self.respawnSizeY] = [self.killXSize/3,
                                                   self.killYSize/3]
         if self.powerUp:
+            newPowerUps = []
             for power in self.powerUps:
-                if power.active: power.timeLength = 0
-            for power in self.powerUps:
-                if not power.active and (not power.manage(self)):
-                    newPowerUps += [power]
+                if power.active: power.deactivate(self)
+                elif not power.manage(self): newPowerUps += [power]
             self.powerUps = newPowerUps
 
     def respawn(self):  # gives invincibility and revives player
@@ -931,7 +928,7 @@ class JetpackScotty(App):  # main app class
         elif event.key.lower() == 'g':  # changes graphics
             if self.dDrops: self.changeSpeedGraphics(draw=False)
             else: self.changeSpeedGraphics(draw=True)
-        elif event.key.lower == 't': testCode.printData(self)
+        elif event.key.lower() == 't': testCode.printData(self)
 
     def sizeChanged(self):  # certain variables must be reset from appStarted
         self.scale = self.width/self.standardizedWidth

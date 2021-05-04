@@ -151,7 +151,7 @@ def mergeSingleDistribution(difficulty, distribution, type):
 
 # builds distribution list from probability dictionary
 def createDistribution(probabilities):
-    [distribution, distributionSize] = [[], 30]
+    [distribution, distributionSize] = [[], 15]
     for key in probabilities:
         number = int(probabilities[key]*distributionSize)
         for i in range(number):
