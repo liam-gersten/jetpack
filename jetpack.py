@@ -449,24 +449,24 @@ class Booster():  # rocket fuel power up
         [self.x, self.y] = [app.width/5, app.barY/2]
         self.timeInitial = time.time()
         [app.invincible, app.missiles, app.lazyGeneration] = [True, [], True]
-        app.player.freezeFactor = 2
+        [app.player.freezeFactor, self.finishDrops] = [2, app.dDrops]
 
     def manage(self, app):  # hides and shows Cohon sprites
         if self.active:
             timeSinceStart = time.time()-self.timeInitial
             inflationScale = math.sin(math.pi*timeSinceStart/self.timeLength)
-            app.speed = self.priorSpeed+(inflationScale*app.speed*4)
+            app.speed = self.priorSpeed+(inflationScale*self.priorSpeed*10)
             if 8 <= (self.timeLength-(time.time()-self.timeInitial)) <= 10:
                 app.dropY += 5*app.scale
-            elif 1 < (self.timeLength-(time.time()-self.timeInitial)) < 8:
+            elif 2 < (self.timeLength-(time.time()-self.timeInitial)) < 8:
                 app.dDrops = False
-            elif 0 <= (self.timeLength-(time.time()-self.timeInitial)) <= 1:
+            elif 0 <= (self.timeLength-(time.time()-self.timeInitial)) <= 2:
                 if not self.called:
                     for i in range((app.width//app.dropSize[0])+2):
                         app.drops += [BackDrop(app, i, False, 1)]
                     self.called = True
-                app.dDrops = True
-                app.dropY -= 10*app.scale
+                if self.finishDrops: app.dDrops = True
+                app.dropY -= 5*app.scale
             elif self.timeLength-(time.time()-self.timeInitial) < 0:
                 app.dropY = 0
             for drop in app.drops:
@@ -551,7 +551,8 @@ class TimeSlower():  # power up that slows down time
         app.powerUp = False
         app.speed = app.speed*app.timeDilation  # resets speed
         app.timeDilation = 1
-        for beam in app.beams: beam.dilate(app)
+        for beam in app.beams:
+            if beam.type != 'static': beam.dilate(app)
     def draw(self, app, canvas):
         drawPowerUp(self, app, canvas)
 
@@ -919,11 +920,11 @@ class JetpackScotty(App):  # main app class
         if event.key.lower() == 'd': self.debug = not self.debug
         elif event.key.lower() == 'right':
             self.difficultyBase += self.diffInc
-            self.changeSpeedGraphics()
+            if not self.powerUp: self.changeSpeedGraphics()
         elif (event.key.lower() == 'left') and (self.difficultyBase-
-                        self.diffInc > 0):
+            self.diffInc > 0):
             self.difficultyBase -= self.diffInc
-            self.changeSpeedGraphics()
+            if not self.powerUp: self.changeSpeedGraphics()
         elif event.key.lower() == 'i': self.usePowerUps = not self.usePowerUps
         elif event.key.lower() == 'p': testCode.printer(self)
         elif event.key.lower() == 'c': self.points += 1000

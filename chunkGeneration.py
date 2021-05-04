@@ -168,6 +168,7 @@ def getBeamRowColRanges(app, quadrant):  # spawn ranges from quadrant
 
 # places beams onto a test chunk and before testing with pathfinder
 def beamGenerator(app, chunk, upperBeamRange, x, difficulty):
+    if upperBeamRange > 6: upperBeamRange = 6
     beamNumbers = [i for i in range(1, upperBeamRange+1)]
     while True:
         [tempBeams, tempChunk, types] = [[], copy.deepcopy(chunk), []]
@@ -256,9 +257,9 @@ def powerUpGenerator(app, chunk):  # spawns power ups on top of chunks
         (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
 
 def getDifficulty(app):
-    difficultyCurves = {'easy': {'c0': 1/60, 'c1': 1/1000, 'c2': 0},
-                        'medium': {'c0': 1/60, 'c1': 1/500, 'c2': 0},
-                        'hard': {'c0': 1/60, 'c1': 1/500, 'c2': 25}}
+    difficultyCurves = {'easy': {'c0': 1/60, 'c1': 1/5000, 'c2': 0},
+                        'medium': {'c0': 1/60, 'c1': 1/2500, 'c2': 0},
+                        'hard': {'c0': 1/60, 'c1': 1/2500, 'c2': 25}}
     curve = difficultyCurves[app.difficulty]
     return ((time.time()-app.timeInitial-app.pausedTime)*curve['c0'])+\
            (int(app.currentRun//100)*curve['c1'])+app.deaths+curve['c2']
