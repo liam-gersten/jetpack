@@ -596,9 +596,8 @@ class Chunk():  # 2D list includes locations of coins/obstacles
 
 class JetpackScotty(App):  # main app class
     def appStarted(self):  # variables not reset by restartApp
-        self.speedDifference = 3
         [self.rows, self.cols, self.points] = [20, 40, 0]
-        [self.difficulty, self.diffInc] = ['medium', 5]
+        [self.diffInc, self.speedDifference] = [5, 3]
         [self.pathfinderStall, self.usePowerUps] = [0.5, True]
         [self.cloudNumer, self.longestRun, self.currentRun] = [3, 0, 0]
         [self.barPortion, self.standardizedWidth] = [9, 800]
@@ -656,12 +655,12 @@ class JetpackScotty(App):  # main app class
         for imageKey in self.scottyImages: self.scottyImages[imageKey] = \
                 self.scaleImage(self.scottyImages[imageKey], self.scale)
         dropImage = self.scaleImage(self.loadImage('sprites/cohon0.tiff'),
-                                    2*self.scale)
+                                    self.scale*2)
         self.dropSize = [dropImage.size[0], dropImage.size[1]]
         self.dropImages = {0: dropImage,
             1: dropImage.transpose(Image.FLIP_LEFT_RIGHT)}
         self.dropImages[2] = self.scaleImage(
-            self.loadImage('sprites/cohon1.png'), 2*self.scale)
+            self.loadImage('sprites/cohon1.png'), self.scale*2)
         for i in range(17): self.igniteImages[i/10] = self.scaleImage(
             self.loadImage('sprites/ignite'+str(i)+'.png'), self.scale)
         self.igniteImages[1.7] = self.igniteImages[1.5].\
@@ -682,6 +681,7 @@ class JetpackScotty(App):  # main app class
         chunkGeneration.resetLongs(self)  # player data is reset
         chunkGeneration.resetStandards(self)
         chunkGeneration.resetFasts(self)
+        self.difficulty = 'medium'
         [self.dDrops, self.dCoins, self.lazyGeneration] = [True, True, False]
         if self.currentRun > self.longestRun: self.longestRun = self.currentRun
         [self.currentRun, self.lazyGeneration, self.deaths] = [0, False, 0]
@@ -866,6 +866,7 @@ class JetpackScotty(App):  # main app class
         else: self.hilight = False
 
     def timerFired(self):
+        if self.difficulty == 'hard': self.changeSpeedGraphics(draw=False)
         if self.start:
             if self.gameOver and (self.killY > (self.trueHeight/2)+self.barY):
                 self.killY -= 10*self.scale  # moves game over screen

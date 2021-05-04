@@ -257,9 +257,9 @@ def powerUpGenerator(app, chunk):  # spawns power ups on top of chunks
         (app.cellSize/2), app.barY+(row*app.cellSize)+(app.cellSize/2))]
 
 def getDifficulty(app):
-    difficultyCurves = {'easy': {'c0': 1/60, 'c1': 1/5000, 'c2': 0},
-                        'medium': {'c0': 1/60, 'c1': 1/2500, 'c2': 0},
-                        'hard': {'c0': 1/60, 'c1': 1/2500, 'c2': 25}}
+    difficultyCurves = {'easy': {'c0': 1/60, 'c1': 1/1500, 'c2': 0},
+                        'medium': {'c0': 1/60, 'c1': 1/1250, 'c2': 0},
+                        'hard': {'c0': 1/60, 'c1': 1/1000, 'c2': 25}}
     curve = difficultyCurves[app.difficulty]
     return ((time.time()-app.timeInitial-app.pausedTime)*curve['c0'])+\
            (int(app.currentRun//100)*curve['c1'])+app.deaths+curve['c2']
